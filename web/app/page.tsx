@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 
+const PROXY = 'http://localhost:8080';
+
 interface Connector {
   name: string;
 }
