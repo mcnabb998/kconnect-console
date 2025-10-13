@@ -23,8 +23,8 @@ import (
 var (
 	connectURL     = getEnv("KAFKA_CONNECT_URL", "http://localhost:8083")
 	allowedOrigins = getEnv("ALLOWED_ORIGINS", "*")
-	// Only redact true secret-like keys; avoid generic "key.converter"
-	sensitivePattern = regexp.MustCompile(`(?i)(^|[._-])(password|secret|api[._-]?key|access[._-]?key|secret[._-]?key|token|credential(s)?)([._-]|$)`)
+	// Only redact true secret-like keys (including camelCase variants); avoid generic "key.converter"
+	sensitivePattern = regexp.MustCompile(`(?i)(?:^|[._-]|[a-z0-9])(password|secret|api[._-]?key|access[._-]?key|secret[._-]?key|token|credential(s)?)(?:$|[._-]|[a-z0-9])`)
 	safeExactKeys    = map[string]struct{}{
 		"key.converter":            {},
 		"value.converter":          {},
@@ -39,7 +39,6 @@ var (
 		expiresAt time.Time
 		valid     bool
 	}{}
-)
 )
 
 // MonitoringSummary represents aggregated status information for connectors.
