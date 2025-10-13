@@ -21,6 +21,7 @@ export default function NewConnectorPage() {
   const [currentStep, setCurrentStep] = useState<Step>('plugin');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showTemplateNotice, setShowTemplateNotice] = useState(true);
 
   // Step 1: Plugin Selection
   const [plugins, setPlugins] = useState<ConnectorPlugin[]>([]);
@@ -253,6 +254,40 @@ export default function NewConnectorPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
+      {/* Template Notice */}
+      {showTemplateNotice && (
+        <div className="bg-blue-50 border-b border-blue-200 p-4">
+          <div className="max-w-4xl mx-auto flex items-start">
+            <div className="text-blue-400 mr-3">ℹ️</div>
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-blue-800">New Template-Based Connector Creation Available!</h3>
+              <p className="text-sm text-blue-700 mt-1">
+                We now offer pre-configured connector templates that automatically check plugin availability and guide you through setup.
+              </p>
+              <div className="mt-3 flex items-center space-x-3">
+                <Link
+                  href="/connectors/templates"
+                  className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                >
+                  Try Template-Based Creation
+                </Link>
+                <button
+                  onClick={() => setShowTemplateNotice(false)}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  Continue with Advanced Mode
+                </button>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowTemplateNotice(false)}
+              className="text-blue-400 hover:text-blue-600"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
       <header className="bg-white dark:bg-gray-800 shadow">
         <div className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">

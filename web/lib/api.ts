@@ -89,6 +89,12 @@ export async function listPlugins(): Promise<ConnectorPlugin[]> {
   return apiRequest<ConnectorPlugin[]>('/connector-plugins');
 }
 
+export async function checkPluginAvailability(pluginClasses: string[]): Promise<Set<string>> {
+  const plugins = await listPlugins();
+  const availableClasses = new Set(plugins.map(p => p.class));
+  return new Set(pluginClasses.filter(cls => availableClasses.has(cls)));
+}
+
 export async function validateConfig(
   pluginClass: string, 
   config: Record<string, any>
