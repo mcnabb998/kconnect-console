@@ -40,8 +40,30 @@ This project provides a Dockerized Kafka Connect UI POC with the following compo
 - Docker and Docker Compose
 - (Optional) Go 1.21+ for local development
 - (Optional) Node.js 20+ for local development
+- (Optional) Make for using Makefile commands
 
 ### Running with Docker Compose
+
+**Using Make (recommended):**
+
+```bash
+# Start all services
+make up
+
+# View logs
+make logs
+
+# Stop services
+make down
+
+# Run tests
+make test
+
+# Create sample connector
+make sample-connector
+```
+
+**Using Docker Compose directly:**
 
 1. Start all services:
    ```bash
