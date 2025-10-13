@@ -7,6 +7,8 @@ import { useMonitoringSummary } from '../monitoring/MonitoringSummaryProvider';
 const navItems = [
   { href: '/', label: 'Home' },
   { href: '/monitoring', label: 'Monitoring' },
+  { href: '/connectors/templates', label: 'Create Connector' },
+  { href: '/capabilities', label: 'Capabilities' },
 ];
 
 export function Navigation() {

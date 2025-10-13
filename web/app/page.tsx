@@ -51,10 +51,16 @@ export default function Home() {
         </div>
         <div className="flex gap-2">
           <Link
-            href="/connectors/new"
+            href="/connectors/templates"
             className="inline-flex items-center justify-center rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500"
           >
-            New Connector
+            Create Connector
+          </Link>
+          <Link
+            href="/capabilities"
+            className="inline-flex items-center justify-center rounded-md bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500"
+          >
+            View Capabilities
           </Link>
           <button
             onClick={fetchConnectors}
@@ -83,8 +89,41 @@ export default function Home() {
       )}
 
       {!loading && !error && connectors.length === 0 && (
-        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-6 text-sm text-yellow-800">
-          No connectors found. Start by creating a new connector.
+        <div className="space-y-6">
+          <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-6 text-sm text-yellow-800">
+            No connectors found. Start by creating a new connector using our template-based wizard.
+          </div>
+          
+          {/* Quick Start Guide */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-3">🚀 Create Connector</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Use our template-based wizard with pre-configured connector templates. 
+                Automatically detects which plugins are installed and available.
+              </p>
+              <Link
+                href="/connectors/templates"
+                className="text-sm bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+              >
+                Get Started
+              </Link>
+            </div>
+            
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-3">🔍 View Capabilities</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Explore all installed connector plugins, their configuration options, 
+                and see which templates are available.
+              </p>
+              <Link
+                href="/capabilities"
+                className="text-sm bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+              >
+                Explore Plugins
+              </Link>
+            </div>
+          </div>
         </div>
       )}
 
