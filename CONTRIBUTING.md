@@ -26,7 +26,7 @@ Thank you for your interest in contributing to kconnect-console!
 
 3. Run tests:
    ```bash
-   go test -v
+   go test -v -cover ./...
    ```
 
 4. Run locally:
@@ -53,18 +53,21 @@ Thank you for your interest in contributing to kconnect-console!
 
 4. Open http://localhost:3000
 
+5. Run tests:
+   ```bash
+   npm run test -- --coverage
+   ```
+
 ### Testing
 
 Run the complete test suite:
 ```bash
-./test.sh
+make test
 ```
 
 This will:
-- Build the Go proxy
-- Run Go unit tests
-- Build the Next.js application
-- Validate docker-compose configuration
+- Run Go proxy tests with coverage reporting
+- Run web Vitest suites with coverage reporting
 
 ### Code Style
 
@@ -83,7 +86,7 @@ This will:
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/my-feature`
 3. Make your changes
-4. Run tests: `./test.sh`
+4. Run tests: `make test`
 5. Commit with descriptive messages
 6. Push to your fork
 7. Create a pull request
