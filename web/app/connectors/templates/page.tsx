@@ -132,17 +132,24 @@ export default function NewConnectorPage() {
     
     setSelectedTemplate(template);
     setSelectedPlugin(template.connectorClass);
-    setConfigValues(template.defaultConfig);
+    const defaultConfig = { 'connector.class': template.connectorClass, ...template.defaultConfig };
+    setConfigValues(defaultConfig);
     setCurrentStep('configure');
-    loadConfigDefinitions(template.connectorClass);
+    loadConfigDefinitions(template.connectorClass, defaultConfig);
   };
 
   // Load configuration definitions for a plugin
-  const loadConfigDefinitions = async (pluginClass: string) => {
+  const loadConfigDefinitions = async (
+    pluginClass: string,
+    initialConfig: Record<string, any> = {}
+  ) => {
     try {
       setLoading(true);
       setError(null);
-      const validation = await validateConfig(pluginClass, {});
+      const validation = await validateConfig(pluginClass, {
+        'connector.class': pluginClass,
+        ...initialConfig,
+      });
       setConfigDefinitions(validation.configs || []);
     } catch (error) {
       const message = error instanceof KafkaConnectApiError
@@ -390,9 +397,10 @@ export default function NewConnectorPage() {
                   key={plugin.class}
                   onClick={() => {
                     setSelectedPlugin(plugin.class);
-                    setConfigValues({ 'connector.class': plugin.class, 'tasks.max': '1' });
+                    const defaultConfig = { 'connector.class': plugin.class, 'tasks.max': '1' };
+                    setConfigValues(defaultConfig);
                     setCurrentStep('configure');
-                    loadConfigDefinitions(plugin.class);
+                    loadConfigDefinitions(plugin.class, defaultConfig);
                   }}
                   className="p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
                 >

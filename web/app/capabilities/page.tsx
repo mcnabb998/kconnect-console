@@ -77,7 +77,9 @@ export default function CapabilitiesPage() {
     }));
 
     try {
-      const validation = await validateConfig(pluginClass, {});
+      const validation = await validateConfig(pluginClass, {
+        'connector.class': pluginClass,
+      });
       setCapabilities(prev => ({
         ...prev,
         [pluginClass]: {
@@ -131,8 +133,8 @@ export default function CapabilitiesPage() {
       const search = searchTerm.toLowerCase();
       return (
         plugin.class.toLowerCase().includes(search) ||
-        capability?.template?.name.toLowerCase().includes(search) ||
-        capability?.template?.description.toLowerCase().includes(search)
+        capability?.template?.name?.toLowerCase().includes(search) ||
+        capability?.template?.description?.toLowerCase().includes(search)
       );
     }
     
