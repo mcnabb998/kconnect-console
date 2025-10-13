@@ -42,6 +42,59 @@ This project provides a Dockerized Kafka Connect UI POC with the following compo
 - (Optional) Node.js 20+ for local development
 - (Optional) Make for using Makefile commands
 
+### Mirroring Images and Artifacts into Artifactory
+
+If you run the stack in an isolated environment, mirror the following
+dependencies into your internal Artifactory (or equivalent OCI registry) so the
+Docker builds and `docker-compose` file can resolve all requirements.
+
+#### Kafka stack dependencies (Confluent images)
+
+These are the upstream Confluent images that power Zookeeper/Kafka/Kafka
+Connect. They are the only artifacts required for the Kafka Connect cluster
+itself.
+
+| Image | Tag | Used By |
+| --- | --- | --- |
+| `confluentinc/cp-zookeeper` | `7.5.0` | `compose/docker-compose.yml` (`zookeeper` service) |
+| `confluentinc/cp-kafka` | `7.5.0` | `compose/docker-compose.yml` (`kafka` service) |
+| `confluentinc/cp-kafka-connect` | `7.5.0` | `compose/docker-compose.yml` (`kafka-connect` service) |
+
+In addition, the Kafka Connect container installs the
+`confluentinc/kafka-connect-datagen:latest` connector from Confluent Hub at
+startup. Mirror that connector archive inside Artifactory (or configure Kafka
+Connect to use your mirrored location) if outbound internet access is
+restricted.
+
+#### UI and proxy dependencies
+
+The UI (`web` service) and proxy (`proxy` service) are built from source in this
+repository. You have two options:
+
+1. **Build locally inside your network** using the mirrored base images below.
+2. **Pre-build and push** your own `kconnect-proxy` and `kconnect-web` images to
+   Artifactory, then update `compose/docker-compose.yml` to reference those
+   image names instead of building from the local Dockerfiles.
+
+Regardless of the option you choose, mirror these base images so the Docker
+build stages can run without internet access:
+
+| Image | Tag | Used By |
+| --- | --- | --- |
+| `golang` | `1.21-alpine` | `proxy/Dockerfile` build stage |
+| `alpine` | `latest` | `proxy/Dockerfile` runtime stage |
+| `node` | `20-alpine` | `web/Dockerfile` build + runtime stages |
+
+The web Dockerfile downloads npm packages during `npm ci`. For air-gapped
+builds, configure npm to use your Artifactory npm registry mirror (for example
+via an `.npmrc` file or the `NPM_CONFIG_REGISTRY` build argument) and pre-cache
+the dependencies declared in `web/package.json`.
+
+After mirroring, update your Dockerfiles and
+`compose/docker-compose.yml` (or build-time args/environment) to reference the
+Artifactory-hosted image and registry paths (for example,
+`registry.internal.example.com/confluentinc/cp-kafka:7.5.0`).
+
 ### Running with Docker Compose
 
 **Using Make (recommended):**
