@@ -8,15 +8,23 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 )
 
 var (
-	connectURL       = getEnv("KAFKA_CONNECT_URL", "http://localhost:8083")
-	allowedOrigins   = getEnv("ALLOWED_ORIGINS", "*")
-	sensitivePattern = regexp.MustCompile(`(?i)(password|secret|token|key|credential|auth)`)
+	connectURL     = getEnv("KAFKA_CONNECT_URL", "http://localhost:8083")
+	allowedOrigins = getEnv("ALLOWED_ORIGINS", "*")
+	// Only redact true secret-like keys; avoid generic "key.converter"
+	sensitivePattern = regexp.MustCompile(`(?i)(^|[._-])(password|secret|api[._-]?key|access[._-]?key|secret[._-]?key|token|credential(s)?)([._-]|$)`)
+	safeExactKeys    = map[string]struct{}{
+		"key.converter":            {},
+		"value.converter":          {},
+		"internal.key.converter":   {},
+		"internal.value.converter": {},
+	}
 )
 
 func getEnv(key, defaultValue string) string {
@@ -32,7 +40,12 @@ func redactSensitiveData(data interface{}) interface{} {
 	case map[string]interface{}:
 		result := make(map[string]interface{})
 		for key, value := range v {
-			if sensitivePattern.MatchString(key) {
+			lk := strings.ToLower(key)
+			if _, ok := safeExactKeys[lk]; ok {
+				result[key] = redactSensitiveData(value)
+				continue
+			}
+			if sensitivePattern.MatchString(lk) {
 				result[key] = "***REDACTED***"
 			} else {
 				result[key] = redactSensitiveData(value)
@@ -56,14 +69,28 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	_ = vars["cluster"] // cluster variable for future use
 	path := vars["path"]
 
-	// Build the target URL - handle empty path case
+	// Build the target URL - extract the endpoint from the request path
 	var targetURL string
 	if path == "" {
-		targetURL = fmt.Sprintf("%s/connectors", connectURL)
+		// Extract endpoint from request path (e.g., "/api/default/connectors" -> "connectors")
+		pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+		if len(pathParts) >= 3 {
+			endpoint := pathParts[2] // Should be "connectors" or "connector-plugins"
+			targetURL = fmt.Sprintf("%s/%s", connectURL, endpoint)
+		} else {
+			targetURL = fmt.Sprintf("%s/connectors", connectURL) // fallback
+		}
 	} else {
-		targetURL = fmt.Sprintf("%s/%s", connectURL, path)
+		// For paths like "datagen-users" or "datagen-users/status", we need to determine the base endpoint
+		pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+		if len(pathParts) >= 3 {
+			endpoint := pathParts[2] // Should be "connectors" or "connector-plugins"
+			targetURL = fmt.Sprintf("%s/%s/%s", connectURL, endpoint, path)
+		} else {
+			targetURL = fmt.Sprintf("%s/connectors/%s", connectURL, path) // fallback
+		}
 	}
-	
+
 	log.Printf("Proxying %s %s to %s", r.Method, r.URL.Path, targetURL)
 
 	// Create the proxy request
@@ -143,6 +170,9 @@ func main() {
 	router.HandleFunc("/api/{cluster}/connectors", proxyHandler).Methods("GET", "POST")
 	router.HandleFunc("/api/{cluster}/connectors/", proxyHandler).Methods("GET", "POST")
 	router.HandleFunc("/api/{cluster}/connectors/{path:.*}", proxyHandler).Methods("GET", "POST", "PUT", "DELETE")
+	// Plugins + validate
+	router.HandleFunc("/api/{cluster}/connector-plugins", proxyHandler).Methods("GET")
+	router.HandleFunc("/api/{cluster}/connector-plugins/{path:.*}", proxyHandler).Methods("GET", "PUT")
 
 	// CORS configuration
 	// In production, set ALLOWED_ORIGINS environment variable to specific domains
@@ -151,7 +181,7 @@ func main() {
 	if allowedOrigins != "*" {
 		origins = []string{allowedOrigins}
 	}
-	
+
 	c := cors.New(cors.Options{
 		AllowedOrigins:   origins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},

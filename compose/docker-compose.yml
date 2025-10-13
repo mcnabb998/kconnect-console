@@ -99,6 +99,8 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: production
+      NEXT_PUBLIC_PROXY_URL: http://localhost:8080
+      NEXT_PUBLIC_CLUSTER_ID: default
     networks:
       - kafka-network
 

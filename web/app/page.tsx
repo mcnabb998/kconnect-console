@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
+const PROXY = 'http://localhost:8080';
+
 interface Connector {
   name: string;
   type: string;
@@ -22,7 +24,7 @@ export default function Home() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`http://localhost:8080/api/${cluster}/connectors`);
+      const response = await fetch(`${PROXY}/api/${cluster}/connectors`);
       if (!response.ok) {
         throw new Error('Failed to fetch connectors');
       }
@@ -54,12 +56,20 @@ export default function Home() {
         <div className="px-4 py-6 sm:px-0">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-semibold text-gray-900">Connectors</h2>
-            <button
-              onClick={fetchConnectors}
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-            >
-              Refresh
-            </button>
+            <div className="flex gap-2">
+              <Link
+                href="/connectors/new"
+                className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+              >
+                New Connector
+              </Link>
+              <button
+                onClick={fetchConnectors}
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              >
+                Refresh
+              </button>
+            </div>
           </div>
 
           {loading && (

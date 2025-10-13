@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+const PROXY = process.env.NEXT_PUBLIC_PROXY_URL ?? 'http://localhost:8080';
+
 interface ConnectorStatus {
   name: string;
   connector: {
@@ -36,12 +38,23 @@ export default function ConnectorDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showCreatedToast, setShowCreatedToast] = useState(false);
 
   useEffect(() => {
     if (name) {
       fetchConnectorDetails();
+      
+      // Check if redirected from creation
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('created') === 'true') {
+        setShowCreatedToast(true);
+        // Remove the query param from URL
+        router.replace(`/connectors/${name}`, undefined);
+        // Hide toast after 5 seconds
+        setTimeout(() => setShowCreatedToast(false), 5000);
+      }
     }
-  }, [name]);
+  }, [name, router]);
 
   const fetchConnectorDetails = async () => {
     try {
@@ -49,8 +62,8 @@ export default function ConnectorDetail() {
       setError(null);
 
       const [statusRes, configRes] = await Promise.all([
-        fetch(`http://localhost:8080/api/${cluster}/connectors/${name}/status`),
-        fetch(`http://localhost:8080/api/${cluster}/connectors/${name}`)
+        fetch(`${PROXY}/api/${cluster}/connectors/${name}/status`),
+        fetch(`${PROXY}/api/${cluster}/connectors/${name}`)
       ]);
 
       if (!statusRes.ok || !configRes.ok) {
@@ -74,8 +87,9 @@ export default function ConnectorDetail() {
       setActionLoading(true);
       setError(null);
 
-      const url = `http://localhost:8080/api/${cluster}/connectors/${name}/${action}`;
-      const response = await fetch(url, { method: 'PUT' });
+      const url = `${PROXY}/api/${cluster}/connectors/${name}/${action}`;
+      const method = action === 'restart' ? 'POST' : 'PUT';
+      const response = await fetch(url, { method });
 
       if (!response.ok) {
         throw new Error(`Failed to ${action} connector`);
@@ -102,7 +116,7 @@ export default function ConnectorDetail() {
       setError(null);
 
       const response = await fetch(
-        `http://localhost:8080/api/${cluster}/connectors/${name}`,
+        `${PROXY}/api/${cluster}/connectors/${name}`,
         { method: 'DELETE' }
       );
 
@@ -168,6 +182,13 @@ export default function ConnectorDetail() {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
+          {showCreatedToast && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-4">
+              <p className="font-bold">Success!</p>
+              <p>Connector "{name}" has been created successfully.</p>
+            </div>
+          )}
+          
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
               <p className="font-bold">Error</p>
