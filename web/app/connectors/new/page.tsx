@@ -62,10 +62,13 @@ export default function NewConnectorPage() {
   const filteredPlugins = useMemo(() => {
     if (!pluginSearch) return plugins;
     const search = pluginSearch.toLowerCase();
-    return plugins.filter(plugin =>
-      plugin.class.toLowerCase().includes(search) ||
-      plugin.type.toLowerCase().includes(search)
-    );
+    return plugins.filter(plugin => {
+      // Add safety checks to prevent undefined errors
+      const pluginClass = plugin?.class || '';
+      const pluginType = plugin?.type || '';
+      return pluginClass.toLowerCase().includes(search) ||
+             pluginType.toLowerCase().includes(search);
+    });
   }, [plugins, pluginSearch]);
 
   // Debounced validation
@@ -105,6 +108,8 @@ export default function NewConnectorPage() {
         setLoading(true);
         setError(null);
         
+        console.log('Starting validation for plugin:', selectedPlugin);
+        
         // Start with common defaults
         const initialConfig = {
           'connector.class': selectedPlugin,
@@ -112,6 +117,8 @@ export default function NewConnectorPage() {
         };
 
         const response = await validateConfig(selectedPlugin, initialConfig);
+        console.log('Validation response:', response);
+        
         setConfigDefinitions(response.configs || []);
         setConfigValues(initialConfig);
         setValidationErrors(response.value?.errors || {});

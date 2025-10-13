@@ -20,7 +20,7 @@ export default function DynamicField({ definition, value, onChange, error }: Dyn
     recommended_values,
   } = definition;
 
-  const displayName = display_name || name;
+  const displayName = display_name || name || 'Unknown Field';
   const hasError = error && error.length > 0;
   
   const getImportanceBadge = () => {
@@ -30,9 +30,11 @@ export default function DynamicField({ definition, value, onChange, error }: Dyn
       LOW: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
     };
     
+    const importanceLevel = (importance || 'LOW') as keyof typeof colors;
+    
     return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-full ${colors[importance]}`}>
-        {importance}
+      <span className={`px-2 py-1 text-xs font-medium rounded-full ${colors[importanceLevel]}`}>
+        {importanceLevel}
       </span>
     );
   };
@@ -65,7 +67,7 @@ export default function DynamicField({ definition, value, onChange, error }: Dyn
       'max.interval': '5000'
     };
     
-    return placeholders[name] || `Enter ${displayName.toLowerCase()}`;
+    return placeholders[name] || `Enter ${(displayName || name || 'value').toLowerCase()}`;
   };
 
   const renderInput = () => {
