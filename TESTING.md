@@ -7,15 +7,12 @@ This guide explains how to test the Kafka Connect Console POC.
 Run the automated test suite:
 
 ```bash
-./test.sh
+make test
 ```
 
 This will verify:
-- Go proxy builds correctly
-- Go tests pass (including credential redaction tests)
-- Next.js builds correctly
-- Docker Compose configuration is valid
-- All Dockerfiles exist
+- Go proxy unit tests pass with coverage reporting
+- Web Node.js test suites pass with coverage reporting
 
 ## Full Integration Test
 
