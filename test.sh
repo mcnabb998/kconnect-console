@@ -34,6 +34,10 @@ cd ..
 echo ""
 echo "✓ Test 3: Building Next.js application..."
 cd web
+if [ ! -d "node_modules" ]; then
+    echo "  Installing npm dependencies..."
+    npm ci > /tmp/npm-install.log 2>&1
+fi
 npm run build > /tmp/next-build.log 2>&1
 if [ $? -eq 0 ]; then
     echo "  ✓ Next.js builds successfully"

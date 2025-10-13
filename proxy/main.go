@@ -15,6 +15,7 @@ import (
 
 var (
 	connectURL       = getEnv("KAFKA_CONNECT_URL", "http://localhost:8083")
+	allowedOrigins   = getEnv("ALLOWED_ORIGINS", "*")
 	sensitivePattern = regexp.MustCompile(`(?i)(password|secret|token|key|credential|auth)`)
 )
 
@@ -141,14 +142,21 @@ func main() {
 	// Proxy routes for Kafka Connect
 	router.HandleFunc("/api/{cluster}/connectors", proxyHandler).Methods("GET", "POST")
 	router.HandleFunc("/api/{cluster}/connectors/", proxyHandler).Methods("GET", "POST")
-	router.HandleFunc("/api/{cluster}/{path:.*}", proxyHandler).Methods("GET", "POST", "PUT", "DELETE")
+	router.HandleFunc("/api/{cluster}/connectors/{path:.*}", proxyHandler).Methods("GET", "POST", "PUT", "DELETE")
 
 	// CORS configuration
+	// In production, set ALLOWED_ORIGINS environment variable to specific domains
+	// e.g., ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
+	origins := []string{"*"}
+	if allowedOrigins != "*" {
+		origins = []string{allowedOrigins}
+	}
+	
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
+		AllowedOrigins:   origins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"*"},
-		AllowCredentials: true,
+		AllowCredentials: allowedOrigins != "*", // Only allow credentials if origins are restricted
 	})
 
 	handler := c.Handler(router)

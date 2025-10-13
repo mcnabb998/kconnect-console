@@ -122,6 +122,7 @@ npm run dev
 
 - `KAFKA_CONNECT_URL` - Kafka Connect REST API URL (default: http://localhost:8083)
 - `PORT` - Proxy listen port (default: 8080)
+- `ALLOWED_ORIGINS` - CORS allowed origins (default: *). For production, set to specific domains (e.g., "http://localhost:3000,https://yourdomain.com")
 
 ### Sensitive Data Redaction
 
@@ -132,6 +133,22 @@ The proxy automatically redacts fields containing:
 - key
 - credential
 - auth
+
+## Security Considerations
+
+**CORS Configuration**: The default CORS configuration allows all origins (`*`) for development convenience. For production deployments:
+
+1. Set the `ALLOWED_ORIGINS` environment variable to specific domains:
+   ```bash
+   ALLOWED_ORIGINS=https://yourdomain.com
+   ```
+
+2. Multiple origins can be comma-separated:
+   ```bash
+   ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
+   ```
+
+**Note**: When specific origins are configured, credentials are automatically enabled. With wildcard origins, credentials are disabled for security.
 
 ## License
 
