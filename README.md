@@ -138,6 +138,38 @@ npm run dev
 - `PUT /api/:cluster/connectors/:name/restart` - Restart a connector
 - `DELETE /api/:cluster/connectors/:name` - Delete a connector
 
+## Monitoring
+
+The proxy and web UI include light-weight monitoring features so that you can understand cluster health at a glance.
+
+### Summary endpoint
+
+- `GET /api/:cluster/monitoring/summary` - Returns an aggregate view of connector health for the selected cluster. The response payload includes:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `cluster` | string | Cluster identifier that was queried. |
+| `totalConnectors` | number | Total number of connectors discovered in Kafka Connect. |
+| `runningConnectors` | number | Connectors whose tasks are all running. |
+| `failedConnectors` | number | Connectors with at least one failed task. |
+| `degradedConnectors` | number | Connectors with mixed running/failed tasks. |
+| `pausedConnectors` | number | Connectors that are currently paused. |
+| `lastUpdated` | string (ISO 8601) | When the summary was last refreshed from Kafka Connect. |
+| `cacheTtlSeconds` | number | How long (in seconds) the proxy will reuse the cached response. |
+
+To avoid repeatedly walking the Kafka Connect REST API, the proxy caches the computed summary in-memory for the duration specified by `cacheTtlSeconds` (currently 30 seconds). Subsequent requests within that window return the cached payload immediately, while requests after the TTL force a fresh refresh from Kafka Connect.
+
+### Example request via the proxy
+
+```bash
+curl "${NEXT_PUBLIC_PROXY_URL:-http://localhost:8080}/api/${NEXT_PUBLIC_CLUSTER_ID:-default}/monitoring/summary" \
+  -H "Accept: application/json"
+```
+
+### Monitoring in the web UI
+
+The **Monitoring** page in the Next.js application visualizes the same summary data and surfaces a red failed-connector alert badge whenever `failedConnectors` is greater than zero. Configure the page by setting the build-time environment variables `NEXT_PUBLIC_PROXY_URL` (proxy base URL, e.g. `http://localhost:8080`) and `NEXT_PUBLIC_CLUSTER_ID` (cluster name, e.g. `default`). Once those variables are supplied and the frontend is built, the Monitoring page is available from the UI navigation alongside the connector list.
+
 ## Configuration
 
 ### Proxy Environment Variables
