@@ -12,7 +12,7 @@ make test
 
 This will verify:
 - Go proxy unit tests pass with coverage reporting
-- Web Vitest suites pass with coverage reporting
+- Web Node.js test suites pass with coverage reporting
 
 ## Full Integration Test
 

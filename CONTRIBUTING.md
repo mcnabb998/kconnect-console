@@ -67,7 +67,7 @@ make test
 
 This will:
 - Run Go proxy tests with coverage reporting
-- Run web Vitest suites with coverage reporting
+- Run web Node.js test suites with coverage reporting
 
 ### Code Style
 
