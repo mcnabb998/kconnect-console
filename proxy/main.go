@@ -55,8 +55,13 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	_ = vars["cluster"] // cluster variable for future use
 	path := vars["path"]
 
-	// Build the target URL
-	targetURL := fmt.Sprintf("%s/%s", connectURL, path)
+	// Build the target URL - handle empty path case
+	var targetURL string
+	if path == "" {
+		targetURL = fmt.Sprintf("%s/connectors", connectURL)
+	} else {
+		targetURL = fmt.Sprintf("%s/%s", connectURL, path)
+	}
 	
 	log.Printf("Proxying %s %s to %s", r.Method, r.URL.Path, targetURL)
 
@@ -135,7 +140,8 @@ func main() {
 
 	// Proxy routes for Kafka Connect
 	router.HandleFunc("/api/{cluster}/connectors", proxyHandler).Methods("GET", "POST")
-	router.HandleFunc("/api/{cluster}/connectors/{path:.*}", proxyHandler).Methods("GET", "POST", "PUT", "DELETE")
+	router.HandleFunc("/api/{cluster}/connectors/", proxyHandler).Methods("GET", "POST")
+	router.HandleFunc("/api/{cluster}/{path:.*}", proxyHandler).Methods("GET", "POST", "PUT", "DELETE")
 
 	// CORS configuration
 	c := cors.New(cors.Options{
