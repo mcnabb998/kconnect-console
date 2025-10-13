@@ -1,0 +1,21 @@
+{
+  "name": "inventory-source",
+  "connector": {
+    "state": "RUNNING",
+    "worker_id": "connect-worker-0:8083"
+  },
+  "tasks": [
+    {
+      "id": 0,
+      "state": "RUNNING",
+      "worker_id": "connect-worker-0:8083"
+    },
+    {
+      "id": 1,
+      "state": "FAILED",
+      "worker_id": "connect-worker-1:8083",
+      "trace": "org.apache.kafka.connect.errors.ConnectException: Task failed to start"
+    }
+  ],
+  "type": "source"
+}
