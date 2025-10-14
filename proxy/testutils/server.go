@@ -25,7 +25,7 @@ type MockResponse struct {
 //
 // If a request does not match any provided route a 404 will be returned. When Methods
 // is provided, any request using a different verb receives a 405 response.
-func NewConnectServer(t testing.TB, routes map[string]MockResponse) *httptest.Server {
+func NewConnectServerWithTB(t testing.TB, routes map[string]MockResponse) *httptest.Server {
 	t.Helper()
 
 	mux := http.NewServeMux()
@@ -69,7 +69,7 @@ func NewConnectServer(t testing.TB, routes map[string]MockResponse) *httptest.Se
 
 // NewJSONConnectServer is a convenience wrapper around NewConnectServer that sets the
 // Content-Type header to application/json for all responses.
-func NewJSONConnectServer(t testing.TB, routes map[string]MockResponse) *httptest.Server {
+func NewJSONConnectServerWithTB(t testing.TB, routes map[string]MockResponse) *httptest.Server {
 	t.Helper()
 
 	for path, resp := range routes {
@@ -81,5 +81,5 @@ func NewJSONConnectServer(t testing.TB, routes map[string]MockResponse) *httptes
 		routes[path] = resp
 	}
 
-	return NewConnectServer(t, routes)
+	return NewConnectServerWithTB(t, routes)
 }
