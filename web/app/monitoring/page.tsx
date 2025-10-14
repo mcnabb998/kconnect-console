@@ -99,6 +99,7 @@ export default function MonitoringPage() {
     loading,
     error,
     clusterId,
+    uptime: clusterUptime,
     isPolling,
     pausePolling,
     resumePolling,
@@ -125,13 +126,13 @@ export default function MonitoringPage() {
     previousSummary.current = summary;
   }, [summary]);
 
-  const totals = summary?.totals ?? {};
-  const uptime = summary?.uptime ?? 'Unknown uptime';
+  const totals = summary?.totals;
+  const uptime = clusterUptime;
   const connectors = summary?.connectors ?? [];
-  const totalConnectors = totals.total ?? connectors.length;
-  const running = totals.running ?? 0;
-  const degraded = totals.degraded ?? 0;
-  const failed = totals.failed ?? 0;
+  const totalConnectors = totals?.total ?? 0;
+  const running = totals?.running ?? 0;
+  const degraded = totals?.degraded ?? 0;
+  const failed = totals?.failed ?? 0;
 
   const fadeClass = animateRefresh ? 'opacity-95' : 'opacity-100';
 

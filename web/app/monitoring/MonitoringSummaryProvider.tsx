@@ -12,11 +12,11 @@ import {
 } from 'react';
 
 interface MonitoringTotals {
-  total?: number;
-  running?: number;
-  degraded?: number;
-  failed?: number;
-  [key: string]: unknown;
+  total: number;
+  running: number;
+  degraded: number;
+  failed: number;
+  [key: string]: number;
 }
 
 export interface ConnectorSummary {
@@ -41,6 +41,7 @@ export interface MonitoringSummary {
 interface MonitoringSummaryContextValue {
   apiBaseUrl: string;
   clusterId: string;
+  uptime: string;
   summary: MonitoringSummary | null;
   loading: boolean;
   error: string | null;
@@ -71,7 +72,7 @@ export function MonitoringSummaryProvider({ children }: PropsWithChildren) {
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const apiBaseUrl = DEFAULT_PROXY_URL;
-  const clusterId = DEFAULT_CLUSTER_ID;
+  const clusterId = summary?.clusterId?.trim() ? summary.clusterId : DEFAULT_CLUSTER_ID;
   const summaryUrl = `${apiBaseUrl}/api/${clusterId}/monitoring/summary`;
 
   const fetchSummary = useCallback(async () => {
@@ -158,12 +159,14 @@ export function MonitoringSummaryProvider({ children }: PropsWithChildren) {
     void fetchSummary();
   }, [fetchSummary]);
 
-  const hasFailures = Boolean(summary?.totals && (summary.totals.failed ?? 0) > 0);
+  const hasFailures = (summary?.totals?.failed ?? 0) > 0;
+  const uptime = summary?.uptime?.trim() ? summary.uptime : 'unknown';
 
   const value = useMemo<MonitoringSummaryContextValue>(
     () => ({
       apiBaseUrl,
       clusterId,
+      uptime,
       summary,
       loading,
       error,
@@ -186,6 +189,7 @@ export function MonitoringSummaryProvider({ children }: PropsWithChildren) {
       pausePolling,
       resumePolling,
       summary,
+      uptime,
     ],
   );
 

@@ -102,6 +102,22 @@ func TestFetchMonitoringSummaryAggregatesStates(t *testing.T) {
 		t.Fatalf("expected uptime 9 seconds, got %d", summary.UptimeSeconds)
 	}
 
+	if summary.Uptime != "9s" {
+		t.Fatalf("expected uptime label 9s, got %q", summary.Uptime)
+	}
+
+	if summary.Totals["total"] != 2 {
+		t.Fatalf("expected totals total 2, got %d", summary.Totals["total"])
+	}
+
+	if summary.Totals["failed"] != 0 {
+		t.Fatalf("expected totals failed 0, got %d", summary.Totals["failed"])
+	}
+
+	if summary.Totals["degraded"] != 2 {
+		t.Fatalf("expected totals degraded 2, got %d", summary.Totals["degraded"])
+	}
+
 	if len(summary.Connectors) != 2 {
 		t.Fatalf("expected 2 connector overviews, got %d", len(summary.Connectors))
 	}
