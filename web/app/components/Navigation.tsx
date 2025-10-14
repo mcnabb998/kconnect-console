@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useMonitoringSummary } from '../monitoring/MonitoringSummaryProvider';
+import type { ReactElement } from 'react';
 
 type NavItem = {
   href: string;
   label: string;
-  Icon: (props: { className?: string }) => JSX.Element;
+  Icon: (props: { className?: string }) => ReactElement;
 };
 
 const navItems: NavItem[] = [

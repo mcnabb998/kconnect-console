@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { SkeletonCard, SkeletonLine, SkeletonSurface, SkeletonTableRow } from '@/components/Skeleton';
 
@@ -524,11 +523,6 @@ export default function MonitoringPage() {
             {isPolling ? 'Pause' : 'Resume'} monitoring
           </button>
         </div>
-    <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8" aria-busy={false}>
-      <header className="mb-10">
-        <p className="text-sm font-medium text-gray-500">Cluster: {summary?.clusterId ?? clusterId}</p>
-        <h1 className="mt-1 text-3xl font-bold text-gray-900">Monitoring Overview</h1>
-        <p className="mt-2 text-sm text-gray-600">Uptime: {uptime}</p>
       </header>
 
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
