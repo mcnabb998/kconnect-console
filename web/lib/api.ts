@@ -3,6 +3,8 @@
 const PROXY = typeof window !== 'undefined' ? 'http://localhost:8080' : 'http://kconnect-proxy:8080';
 const CLUSTER = 'default';
 
+export type ConnectorAction = 'pause' | 'resume' | 'restart' | 'delete';
+
 export interface ConnectorPlugin {
   class: string;
   type: 'source' | 'sink';
@@ -76,7 +78,21 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
       throw new KafkaConnectApiError(response.status, errorData);
     }
 
-    return await response.json();
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    const text = await response.text();
+
+    if (!text) {
+      return undefined as T;
+    }
+
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      return text as unknown as T;
+    }
   } catch (error) {
     if (error instanceof KafkaConnectApiError) {
       throw error;
@@ -129,6 +145,73 @@ export async function getConnector(name: string): Promise<ConnectorConfig> {
 
 export async function listConnectors(): Promise<string[]> {
   return apiRequest<string[]>('/connectors');
+}
+
+export interface BulkConnectorActionFailure {
+  name: string;
+  error: string;
+}
+
+export interface BulkConnectorActionResult {
+  successes: string[];
+  failures: BulkConnectorActionFailure[];
+}
+
+function resolveConnectorActionMethod(action: ConnectorAction): 'DELETE' | 'POST' | 'PUT' {
+  if (action === 'restart') {
+    return 'POST';
+  }
+
+  if (action === 'delete') {
+    return 'DELETE';
+  }
+
+  return 'PUT';
+}
+
+export async function performConnectorAction(name: string, action: ConnectorAction): Promise<void> {
+  await apiRequest<void>(`/connectors/${encodeURIComponent(name)}/${action}`, {
+    method: resolveConnectorActionMethod(action),
+  });
+}
+
+export async function bulkConnectorAction(
+  names: string[],
+  action: ConnectorAction
+): Promise<BulkConnectorActionResult> {
+  const outcomes = await Promise.allSettled(
+    names.map(async (name) => {
+      await performConnectorAction(name, action);
+      return name;
+    })
+  );
+
+  const successes: string[] = [];
+  const failures: BulkConnectorActionFailure[] = [];
+
+  outcomes.forEach((result, index) => {
+    const connectorName = names[index];
+
+    if (result.status === 'fulfilled') {
+      successes.push(connectorName);
+      return;
+    }
+
+    const reason = result.reason;
+    let message = 'Unknown error';
+
+    if (reason instanceof KafkaConnectApiError) {
+      message = reason.data?.message ?? `HTTP ${reason.status}`;
+    } else if (reason instanceof Error) {
+      message = reason.message;
+    } else if (typeof reason === 'string') {
+      message = reason;
+    }
+
+    failures.push({ name: connectorName, error: message });
+  });
+
+  return { successes, failures };
 }
 
 export { KafkaConnectApiError };

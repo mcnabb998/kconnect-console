@@ -1,14 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { ConnectorBulkActions } from '@/components/ConnectorBulkActions';
 import { SkeletonCard, SkeletonLine, SkeletonSurface } from '@/components/Skeleton';
+import { performConnectorAction, type ConnectorAction } from '@/lib/api';
 
 const PROXY_URL = 'http://localhost:8080';
 const CLUSTER_ID = 'default';
-
-type ConnectorAction = 'pause' | 'resume' | 'restart';
 
 interface ConnectorTaskStatus {
   id: number;
@@ -89,6 +89,8 @@ export default function Home() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [stateFilter, setStateFilter] = useState('all');
+  const [selectedConnectors, setSelectedConnectors] = useState<Set<string>>(new Set());
+  const selectAllRef = useRef<HTMLInputElement>(null);
 
   const fetchConnectors = useCallback(async () => {
     try {
@@ -164,19 +166,11 @@ export default function Home() {
   }, []);
 
   const handleConnectorAction = useCallback(
-    async (name: string, action: ConnectorAction) => {
+    async (name: string, action: Exclude<ConnectorAction, 'delete'>) => {
       try {
         setActionError(null);
         setActionLoading(`${name}-${action}`);
-        const response = await fetch(
-          `${connectorsEndpoint}/${encodeURIComponent(name)}/${action}`,
-          { method: action === 'restart' ? 'POST' : 'PUT' }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to ${action} connector`);
-        }
-
+        await performConnectorAction(name, action);
         await fetchConnectors();
       } catch (err) {
         setActionError(err instanceof Error ? err.message : 'An error occurred while performing the action');
@@ -191,6 +185,29 @@ export default function Home() {
     fetchConnectors();
   }, [fetchConnectors]);
 
+  useEffect(() => {
+    setSelectedConnectors((previous) => {
+      if (previous.size === 0) {
+        return previous;
+      }
+
+      const currentNames = new Set(connectors.map((connector) => connector.name));
+      const retained = new Set<string>();
+
+      previous.forEach((name) => {
+        if (currentNames.has(name)) {
+          retained.add(name);
+        }
+      });
+
+      if (retained.size === previous.size) {
+        return previous;
+      }
+
+      return retained;
+    });
+  }, [connectors]);
+
   const filteredConnectors = useMemo(() => {
     return connectors.filter((connector) => {
       const matchesSearch = connector.name.toLowerCase().includes(searchTerm.trim().toLowerCase());
@@ -199,6 +216,78 @@ export default function Home() {
       return matchesSearch && matchesState;
     });
   }, [connectors, searchTerm, stateFilter]);
+
+  const selectedConnectorNames = useMemo(() => Array.from(selectedConnectors), [selectedConnectors]);
+  const selectedCount = selectedConnectorNames.length;
+
+  const filteredConnectorNames = useMemo(
+    () => filteredConnectors.map((connector) => connector.name),
+    [filteredConnectors]
+  );
+
+  const filteredSelectedCount = useMemo(
+    () => filteredConnectorNames.filter((name) => selectedConnectors.has(name)).length,
+    [filteredConnectorNames, selectedConnectors]
+  );
+
+  const allFilteredSelected = useMemo(
+    () =>
+      filteredConnectorNames.length > 0 &&
+      filteredConnectorNames.every((name) => selectedConnectors.has(name)),
+    [filteredConnectorNames, selectedConnectors]
+  );
+
+  const toggleConnectorSelection = useCallback((name: string) => {
+    setSelectedConnectors((previous) => {
+      const next = new Set(previous);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSelectAllFiltered = useCallback(() => {
+    setSelectedConnectors((previous) => {
+      if (filteredConnectorNames.length === 0) {
+        return previous;
+      }
+
+      const next = new Set(previous);
+      const shouldUnselect = filteredConnectorNames.every((name) => next.has(name));
+
+      filteredConnectorNames.forEach((name) => {
+        if (shouldUnselect) {
+          next.delete(name);
+        } else {
+          next.add(name);
+        }
+      });
+
+      return next;
+    });
+  }, [filteredConnectorNames]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedConnectors((previous) => {
+      if (previous.size === 0) {
+        return previous;
+      }
+
+      return new Set();
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!selectAllRef.current) {
+      return;
+    }
+
+    selectAllRef.current.indeterminate =
+      filteredSelectedCount > 0 && filteredSelectedCount < filteredConnectorNames.length;
+  }, [filteredConnectorNames, filteredSelectedCount]);
 
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -264,6 +353,13 @@ export default function Home() {
             </label>
           </div>
         </div>
+        {selectedCount > 0 && (
+          <ConnectorBulkActions
+            selected={selectedConnectorNames}
+            onClearSelection={clearSelection}
+            onActionComplete={fetchConnectors}
+          />
+        )}
       </div>
 
       {loading && (
@@ -358,6 +454,17 @@ export default function Home() {
             <table className="min-w-full divide-y divide-slate-200">
               <thead className="bg-slate-50">
                 <tr>
+                  <th scope="col" className="w-12 px-4 py-3">
+                    <input
+                      ref={selectAllRef}
+                      type="checkbox"
+                      aria-label="Select all shown connectors"
+                      checked={allFilteredSelected}
+                      onChange={handleSelectAllFiltered}
+                      disabled={filteredConnectorNames.length === 0}
+                      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
                     Name
                   </th>
@@ -388,6 +495,15 @@ export default function Home() {
 
                   return (
                     <tr key={connector.name} className="hover:bg-slate-50">
+                      <td className="w-12 px-4 py-4">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${connector.name}`}
+                          checked={selectedConnectors.has(connector.name)}
+                          onChange={() => toggleConnectorSelection(connector.name)}
+                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-emerald-700">
                         <Link
                           href={`/connectors/${encodeURIComponent(connector.name)}`}
