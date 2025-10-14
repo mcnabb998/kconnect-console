@@ -43,10 +43,13 @@ var (
 
 // MonitoringSummary represents aggregated status information for connectors.
 type MonitoringSummary struct {
+	ClusterID       string                    `json:"clusterId,omitempty"`
 	TotalConnectors int                       `json:"totalConnectors"`
 	ConnectorStates map[string]int            `json:"connectorStates"`
 	TaskStates      map[string]int            `json:"taskStates"`
+	Totals          map[string]int            `json:"totals,omitempty"`
 	UptimeSeconds   int64                     `json:"uptimeSeconds"`
+	Uptime          string                    `json:"uptime,omitempty"`
 	Connectors      []ConnectorStatusOverview `json:"connectors"`
 }
 
@@ -168,32 +171,33 @@ func fetchConnectorStatus(ctx context.Context, client *http.Client, baseURL, nam
 	return status, nil
 }
 
-func fetchClusterUptime(ctx context.Context, client *http.Client, baseURL string) (time.Duration, error) {
+func fetchClusterMetadata(ctx context.Context, client *http.Client, baseURL string) (string, time.Duration, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimSuffix(baseURL, "/"), nil)
 	if err != nil {
-		return 0, err
+		return "", 0, err
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return 0, &connectUnavailableError{err: err}
+		return "", 0, &connectUnavailableError{err: err}
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("unexpected status fetching connect metadata: %d", resp.StatusCode)
+		return "", 0, fmt.Errorf("unexpected status fetching connect metadata: %d", resp.StatusCode)
 	}
 
 	var payload map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return 0, fmt.Errorf("decode connect metadata: %w", err)
+		return "", 0, fmt.Errorf("decode connect metadata: %w", err)
 	}
 
+	clusterID, _ := extractClusterID(payload)
 	if uptime, ok := extractUptimeSeconds(payload); ok {
-		return time.Duration(uptime) * time.Second, nil
+		return clusterID, time.Duration(uptime) * time.Second, nil
 	}
 
-	return 0, nil
+	return clusterID, 0, nil
 }
 
 func extractUptimeSeconds(data map[string]interface{}) (int64, bool) {
@@ -227,6 +231,35 @@ func extractUptimeSeconds(data map[string]interface{}) (int64, bool) {
 		}
 	}
 	return 0, false
+}
+
+func extractClusterID(data map[string]interface{}) (string, bool) {
+	for key, value := range data {
+		switch v := value.(type) {
+		case map[string]interface{}:
+			if id, ok := extractClusterID(v); ok {
+				return id, true
+			}
+		case []interface{}:
+			for _, item := range v {
+				if nested, ok := item.(map[string]interface{}); ok {
+					if id, ok := extractClusterID(nested); ok {
+						return id, true
+					}
+				}
+			}
+		case string:
+			normalizedKey := strings.ToLower(strings.ReplaceAll(key, "-", "_"))
+			normalizedKey = strings.ReplaceAll(normalizedKey, ".", "_")
+			if normalizedKey == "cluster_id" || normalizedKey == "clusterid" {
+				trimmed := strings.TrimSpace(v)
+				if trimmed != "" {
+					return trimmed, true
+				}
+			}
+		}
+	}
+	return "", false
 }
 
 func parseMilliseconds(value interface{}) (int64, error) {
@@ -300,6 +333,48 @@ func parseInt(value string) (int64, error) {
 	return strconv.ParseInt(value, 10, 64)
 }
 
+func formatUptime(d time.Duration) string {
+	if d <= 0 {
+		return "unknown"
+	}
+
+	type unit struct {
+		duration time.Duration
+		label    string
+	}
+
+	units := []unit{
+		{duration: 24 * time.Hour, label: "d"},
+		{duration: time.Hour, label: "h"},
+		{duration: time.Minute, label: "m"},
+		{duration: time.Second, label: "s"},
+	}
+
+	var parts []string
+	remaining := d
+
+	for _, u := range units {
+		if remaining < u.duration {
+			continue
+		}
+		value := remaining / u.duration
+		if value > 0 {
+			parts = append(parts, fmt.Sprintf("%d%s", value, u.label))
+			remaining -= value * u.duration
+		}
+	}
+
+	if len(parts) == 0 {
+		return "<1s"
+	}
+
+	if len(parts) > 2 {
+		parts = parts[:2]
+	}
+
+	return strings.Join(parts, " ")
+}
+
 func fetchMonitoringSummary(ctx context.Context, client *http.Client, baseURL string) (MonitoringSummary, error) {
 	names, err := fetchConnectorNames(ctx, client, baseURL)
 	if err != nil {
@@ -309,6 +384,9 @@ func fetchMonitoringSummary(ctx context.Context, client *http.Client, baseURL st
 	connectorStates := newStateCounter()
 	taskStates := newStateCounter()
 	overviews := make([]ConnectorStatusOverview, 0, len(names))
+	runningConnectors := 0
+	degradedConnectors := 0
+	failedConnectors := 0
 
 	for _, name := range names {
 		status, err := fetchConnectorStatus(ctx, client, baseURL, name)
@@ -324,26 +402,66 @@ func fetchMonitoringSummary(ctx context.Context, client *http.Client, baseURL st
 			Type:  status.Type,
 		})
 
+		hasRunningTask := false
+		hasFailedTask := false
 		for _, task := range status.Tasks {
 			taskState := normalizeState(task.State)
 			taskStates[taskState]++
+			if taskState == "running" {
+				hasRunningTask = true
+			}
+			if taskState == "failed" {
+				hasFailedTask = true
+			}
+		}
+
+		switch {
+		case hasFailedTask && hasRunningTask:
+			degradedConnectors++
+		case hasFailedTask:
+			failedConnectors++
+		default:
+			switch state {
+			case "failed":
+				failedConnectors++
+			case "running":
+				runningConnectors++
+			default:
+				degradedConnectors++
+			}
 		}
 	}
 
-	uptime, err := fetchClusterUptime(ctx, client, baseURL)
+	totals := map[string]int{
+		"total":    len(names),
+		"running":  runningConnectors,
+		"degraded": degradedConnectors,
+		"failed":   failedConnectors,
+	}
+
+	clusterID := ""
+	uptime := time.Duration(0)
+
+	metadataClusterID, metadataUptime, err := fetchClusterMetadata(ctx, client, baseURL)
 	if err != nil {
 		var cue *connectUnavailableError
 		if errors.As(err, &cue) {
 			return MonitoringSummary{}, err
 		}
 		log.Printf("warning: failed to fetch connect uptime: %v", err)
+	} else {
+		clusterID = metadataClusterID
+		uptime = metadataUptime
 	}
 
 	summary := MonitoringSummary{
+		ClusterID:       clusterID,
 		TotalConnectors: len(names),
 		ConnectorStates: connectorStates,
 		TaskStates:      taskStates,
-		UptimeSeconds:   int64(uptime.Seconds()),
+		Totals:          totals,
+		UptimeSeconds:   int64((uptime / time.Second)),
+		Uptime:          formatUptime(uptime),
 		Connectors:      overviews,
 	}
 
@@ -518,7 +636,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 
 func monitoringSummaryHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	_ = vars["cluster"]
+	requestedCluster := vars["cluster"]
 
 	summary, err := getMonitoringSummary(r.Context())
 	if err != nil {
@@ -540,6 +658,13 @@ func monitoringSummaryHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("failed to encode error response: %v", err)
 		}
 		return
+	}
+
+	if summary.ClusterID == "" {
+		summary.ClusterID = requestedCluster
+	}
+	if summary.Uptime == "" && summary.UptimeSeconds > 0 {
+		summary.Uptime = formatUptime(time.Duration(summary.UptimeSeconds) * time.Second)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
