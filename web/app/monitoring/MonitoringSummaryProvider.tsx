@@ -46,6 +46,9 @@ interface MonitoringSummaryContextValue {
   error: string | null;
   isRefreshing: boolean;
   hasFailures: boolean;
+  isPolling: boolean;
+  pausePolling: () => void;
+  resumePolling: () => void;
   refresh: () => Promise<void>;
 }
 
@@ -55,14 +58,17 @@ const MonitoringSummaryContext = createContext<MonitoringSummaryContextValue | u
 
 const DEFAULT_PROXY_URL = process.env.NEXT_PUBLIC_PROXY_URL ?? 'http://localhost:8080';
 const DEFAULT_CLUSTER_ID = process.env.NEXT_PUBLIC_CLUSTER_ID ?? 'default';
+const POLLING_INTERVAL_MS = 10_000;
 
 export function MonitoringSummaryProvider({ children }: PropsWithChildren) {
   const [summary, setSummary] = useState<MonitoringSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const hasMountedRef = useRef(true);
   const isInitialFetch = useRef(true);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const apiBaseUrl = DEFAULT_PROXY_URL;
   const clusterId = DEFAULT_CLUSTER_ID;
@@ -106,14 +112,50 @@ export function MonitoringSummaryProvider({ children }: PropsWithChildren) {
     }
   }, [summaryUrl]);
 
+  const stopPolling = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, []);
+
+  const startPolling = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      return;
+    }
+    pollingIntervalRef.current = setInterval(() => {
+      void fetchSummary();
+    }, POLLING_INTERVAL_MS);
+  }, [fetchSummary]);
+
   useEffect(() => {
     hasMountedRef.current = true;
-    fetchSummary();
-    const interval = setInterval(fetchSummary, 10000);
+    void fetchSummary();
     return () => {
       hasMountedRef.current = false;
-      clearInterval(interval);
+      stopPolling();
     };
+  }, [fetchSummary, stopPolling]);
+
+  useEffect(() => {
+    if (isPaused) {
+      stopPolling();
+      return;
+    }
+    startPolling();
+    return () => {
+      stopPolling();
+    };
+  }, [isPaused, startPolling, stopPolling]);
+
+  const pausePolling = useCallback(() => {
+    setIsPaused(true);
+    stopPolling();
+  }, [stopPolling]);
+
+  const resumePolling = useCallback(() => {
+    setIsPaused(false);
+    void fetchSummary();
   }, [fetchSummary]);
 
   const hasFailures = Boolean(summary?.totals && (summary.totals.failed ?? 0) > 0);
@@ -127,9 +169,24 @@ export function MonitoringSummaryProvider({ children }: PropsWithChildren) {
       error,
       isRefreshing,
       hasFailures,
+      isPolling: !isPaused,
+      pausePolling,
+      resumePolling,
       refresh: fetchSummary,
     }),
-    [apiBaseUrl, clusterId, error, fetchSummary, hasFailures, isRefreshing, loading, summary],
+    [
+      apiBaseUrl,
+      clusterId,
+      error,
+      fetchSummary,
+      hasFailures,
+      isPaused,
+      isRefreshing,
+      loading,
+      pausePolling,
+      resumePolling,
+      summary,
+    ],
   );
 
   return (
