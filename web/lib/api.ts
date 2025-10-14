@@ -30,7 +30,16 @@ export interface ValidationResponse {
   name: string;
   error_count: number;
   groups: string[];
-  configs: ConfigDefinition[];
+  configs: Array<{
+    definition: ConfigDefinition;
+    value: {
+      errors: string | string[];
+      name: string;
+      recommended_values: string;
+      value: any;
+      visible: boolean;
+    };
+  }>;
   value?: {
     errors: Record<string, string[]>;
     recommended_values: Record<string, string[]>;
@@ -215,3 +224,47 @@ export async function bulkConnectorAction(
 }
 
 export { KafkaConnectApiError };
+
+// Settings page API functions
+export async function fetchClusterInfo(cluster: string = CLUSTER): Promise<any> {
+  return apiRequest<any>(`/cluster`);
+}
+
+export async function fetchConnectorPlugins(cluster: string = CLUSTER): Promise<ConnectorPlugin[]> {
+  return listPlugins();
+}
+
+export async function fetchSummary(cluster: string = CLUSTER): Promise<any> {
+  return apiRequest<any>(`/summary`);
+}
+
+// Helper function to extract errors from validation response
+export function extractValidationErrors(validation: ValidationResponse): Record<string, string[]> {
+  const errors: Record<string, string[]> = {};
+  
+  // Extract errors from the new validation structure
+  if (validation.configs) {
+    validation.configs.forEach(config => {
+      if (config.value.errors) {
+        // Handle both string and array formats
+        const errorValue = config.value.errors;
+        if (Array.isArray(errorValue)) {
+          // Filter out empty strings and ensure we have actual errors
+          const nonEmptyErrors = errorValue.filter(err => err && err.trim());
+          if (nonEmptyErrors.length > 0) {
+            errors[config.value.name] = nonEmptyErrors;
+          }
+        } else if (typeof errorValue === 'string' && errorValue.trim()) {
+          errors[config.value.name] = [errorValue];
+        }
+      }
+    });
+  }
+  
+  // Also check the legacy format for backward compatibility
+  if (validation.value?.errors) {
+    Object.assign(errors, validation.value.errors);
+  }
+  
+  return errors;
+}

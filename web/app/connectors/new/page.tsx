@@ -11,6 +11,7 @@ import {
   ConfigDefinition,
   ValidationResponse,
   KafkaConnectApiError,
+  extractValidationErrors,
 } from '@/lib/api';
 import DynamicField from '@/components/DynamicField';
 
@@ -86,8 +87,11 @@ export default function NewConnectorPage() {
           ...configValues,
         });
 
-        setConfigDefinitions(response.configs || []);
-        setValidationErrors(response.value?.errors || {});
+        // Extract the definitions from the validation response structure
+        const definitions = response.configs?.map(config => config.definition) || [];
+        setConfigDefinitions(definitions);
+        
+        setValidationErrors(extractValidationErrors(response));
       } catch (err) {
         console.error('Validation error:', err);
         setValidationErrors({});
@@ -120,9 +124,12 @@ export default function NewConnectorPage() {
         const response = await validateConfig(selectedPlugin, initialConfig);
         console.log('Validation response:', response);
         
-        setConfigDefinitions(response.configs || []);
+        // Extract the definitions from the validation response structure
+        const definitions = response.configs?.map(config => config.definition) || [];
+        setConfigDefinitions(definitions);
         setConfigValues(initialConfig);
-        setValidationErrors(response.value?.errors || {});
+        
+        setValidationErrors(extractValidationErrors(response));
       } catch (err) {
         console.error('Validation error:', err);
         if (err instanceof Error) {

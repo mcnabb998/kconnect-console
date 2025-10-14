@@ -12,6 +12,7 @@ import {
   ConfigDefinition,
   ValidationResponse,
   KafkaConnectApiError,
+  extractValidationErrors,
 } from '@/lib/api';
 import { connectorTemplates, ConnectorTemplate, getTemplatesByCategory } from '@/data/connectorTemplates';
 import DynamicField from '@/components/DynamicField';
@@ -150,7 +151,9 @@ export default function NewConnectorPage() {
         'connector.class': pluginClass,
         ...initialConfig,
       });
-      setConfigDefinitions(validation.configs || []);
+      // Extract the definitions from the validation response structure
+      const definitions = validation.configs?.map(config => config.definition) || [];
+      setConfigDefinitions(definitions);
     } catch (error) {
       const message = error instanceof KafkaConnectApiError
         ? `Validation Error: ${error.message}`
@@ -169,10 +172,14 @@ export default function NewConnectorPage() {
       setValidating(true);
       setValidationErrors({});
       const validation = await validateConfig(selectedPlugin, configValues);
-      if (validation.value?.errors) {
-        setValidationErrors(validation.value.errors);
+      
+      const errors = extractValidationErrors(validation);
+      
+      if (Object.keys(errors).length > 0) {
+        setValidationErrors(errors);
         return false;
       }
+      
       return true;
     } catch (error) {
       const message = error instanceof KafkaConnectApiError
