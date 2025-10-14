@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-const PROXY_URL = process.env.NEXT_PUBLIC_PROXY_URL ?? 'http://localhost:8080';
-const CLUSTER_ID = process.env.NEXT_PUBLIC_CLUSTER_ID ?? 'default';
+import { SkeletonCard, SkeletonLine, SkeletonSurface } from '@/components/Skeleton';
+
+const PROXY = 'http://localhost:8080';
 
 type ConnectorAction = 'pause' | 'resume' | 'restart';
 
@@ -199,6 +200,14 @@ export default function Home() {
   }, [connectors, searchTerm, stateFilter]);
 
   return (
+    <section
+      className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8"
+      aria-busy={loading}
+    >
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Connectors</h1>
+          <p className="text-sm text-gray-600">Cluster: {CLUSTER_ID}</p>
     <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-4 border-b border-gray-200 pb-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -265,6 +274,28 @@ export default function Home() {
       </div>
 
       {loading && (
+        <div className="space-y-6" role="status" aria-live="polite">
+          <span className="sr-only">Loading connectors…</span>
+          <SkeletonCard>
+            <div className="space-y-4">
+              <SkeletonLine width="w-1/3" height="h-4" />
+              <div className="grid gap-3 sm:grid-cols-3">
+                <SkeletonLine height="h-9" rounded="rounded-pill" />
+                <SkeletonLine height="h-9" rounded="rounded-pill" />
+                <SkeletonLine height="h-9" rounded="rounded-pill" />
+              </div>
+            </div>
+          </SkeletonCard>
+
+          <SkeletonSurface className="overflow-hidden p-0">
+            <ul className="divide-y divide-gray-200/70 dark:divide-gray-700/60">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <li key={index} className="px-4 py-4 sm:px-6">
+                  <SkeletonLine width="w-1/2" height="h-5" />
+                </li>
+              ))}
+            </ul>
+          </SkeletonSurface>
         <div className="mt-10 rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
           <div
             className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-4 border-emerald-100 border-t-emerald-500"

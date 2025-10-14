@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+import { SkeletonBadge, SkeletonCard, SkeletonLine } from '@/components/Skeleton';
+
 const PROXY = process.env.NEXT_PUBLIC_PROXY_URL ?? 'http://localhost:8080';
 
 interface ConnectorStatus {
@@ -146,13 +148,61 @@ export default function ConnectorDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto py-6 px-4">
-          <div className="text-center py-8">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-            <p className="mt-2 text-gray-600">Loading connector details...</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950" aria-busy={true}>
+        <header className="bg-white/80 shadow-card dark:bg-slate-900/80">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-6 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-3">
+              <SkeletonLine width="w-16" height="h-4" />
+              <SkeletonLine width="w-48" height="h-9" />
+            </div>
+            <SkeletonBadge width="w-28" />
           </div>
-        </div>
+        </header>
+
+        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8" role="status" aria-live="polite">
+          <span className="sr-only">Loading connector details…</span>
+          <div className="space-y-6">
+            <div className="flex flex-wrap gap-3">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <SkeletonLine key={index} width="w-32" height="h-10" rounded="rounded-pill" />
+              ))}
+            </div>
+
+            <SkeletonCard>
+              <div className="grid gap-6 md:grid-cols-2">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="space-y-2">
+                    <SkeletonLine width="w-1/2" height="h-4" />
+                    <SkeletonLine width="w-3/4" height="h-6" />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 space-y-3">
+                <SkeletonLine width="w-1/4" height="h-4" />
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between rounded-panel border border-gray-200/70 bg-gray-50/80 p-3 dark:border-gray-700/60 dark:bg-slate-800/70"
+                  >
+                    <SkeletonLine width="w-24" height="h-4" />
+                    <SkeletonBadge width="w-20" />
+                  </div>
+                ))}
+              </div>
+            </SkeletonCard>
+
+            <SkeletonCard>
+              <div className="space-y-3">
+                <SkeletonLine width="w-1/3" height="h-4" />
+                <div className="space-y-2 rounded-panel bg-gray-100/70 p-4 dark:bg-slate-800/70">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <SkeletonLine key={index} width={index % 2 === 0 ? 'w-full' : 'w-4/5'} />
+                  ))}
+                </div>
+              </div>
+            </SkeletonCard>
+          </div>
+        </main>
       </div>
     );
   }
