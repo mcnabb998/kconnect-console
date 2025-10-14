@@ -19,9 +19,15 @@ export default function RootLayout({
       <body className="bg-gray-50 text-gray-900 antialiased">
         <ErrorBoundary>
           <MonitoringSummaryProvider>
-            <div className="flex min-h-screen flex-col">
-              <Navigation />
-              <main className="flex-1">{children}</main>
+            <div className="flex min-h-screen">
+              <aside className="w-72 shrink-0 border-r border-gray-200 bg-white">
+                <Navigation />
+              </aside>
+              <main className="flex flex-1 justify-center">
+                <div className="flex w-full max-w-[1200px] flex-col gap-6 px-8 py-8">
+                  {children}
+                </div>
+              </main>
             </div>
           </MonitoringSummaryProvider>
         </ErrorBoundary>
