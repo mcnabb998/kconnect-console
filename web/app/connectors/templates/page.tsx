@@ -12,6 +12,7 @@ import {
   ConfigDefinition,
   ValidationResponse,
   KafkaConnectApiError,
+  extractValidationErrors,
 } from '@/lib/api';
 import { connectorTemplates, ConnectorTemplate, getTemplatesByCategory } from '@/data/connectorTemplates';
 import DynamicField from '@/components/DynamicField';
@@ -172,20 +173,7 @@ export default function NewConnectorPage() {
       setValidationErrors({});
       const validation = await validateConfig(selectedPlugin, configValues);
       
-      // Extract errors from the new validation structure
-      const errors: Record<string, string[]> = {};
-      if (validation.configs) {
-        validation.configs.forEach(config => {
-          if (config.value.errors && config.value.errors.trim()) {
-            errors[config.value.name] = [config.value.errors];
-          }
-        });
-      }
-      
-      // Also check the legacy format for backward compatibility
-      if (validation.value?.errors) {
-        Object.assign(errors, validation.value.errors);
-      }
+      const errors = extractValidationErrors(validation);
       
       if (Object.keys(errors).length > 0) {
         setValidationErrors(errors);

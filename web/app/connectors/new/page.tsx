@@ -11,6 +11,7 @@ import {
   ConfigDefinition,
   ValidationResponse,
   KafkaConnectApiError,
+  extractValidationErrors,
 } from '@/lib/api';
 import DynamicField from '@/components/DynamicField';
 
@@ -90,22 +91,7 @@ export default function NewConnectorPage() {
         const definitions = response.configs?.map(config => config.definition) || [];
         setConfigDefinitions(definitions);
         
-        // Extract errors from the new validation structure
-        const errors: Record<string, string[]> = {};
-        if (response.configs) {
-          response.configs.forEach(config => {
-            if (config.value.errors && config.value.errors.trim()) {
-              errors[config.value.name] = [config.value.errors];
-            }
-          });
-        }
-        
-        // Also check the legacy format for backward compatibility
-        if (response.value?.errors) {
-          Object.assign(errors, response.value.errors);
-        }
-        
-        setValidationErrors(errors);
+        setValidationErrors(extractValidationErrors(response));
       } catch (err) {
         console.error('Validation error:', err);
         setValidationErrors({});
@@ -143,22 +129,7 @@ export default function NewConnectorPage() {
         setConfigDefinitions(definitions);
         setConfigValues(initialConfig);
         
-        // Extract errors from the new validation structure
-        const errors: Record<string, string[]> = {};
-        if (response.configs) {
-          response.configs.forEach(config => {
-            if (config.value.errors && config.value.errors.trim()) {
-              errors[config.value.name] = [config.value.errors];
-            }
-          });
-        }
-        
-        // Also check the legacy format for backward compatibility
-        if (response.value?.errors) {
-          Object.assign(errors, response.value.errors);
-        }
-        
-        setValidationErrors(errors);
+        setValidationErrors(extractValidationErrors(response));
       } catch (err) {
         console.error('Validation error:', err);
         if (err instanceof Error) {
