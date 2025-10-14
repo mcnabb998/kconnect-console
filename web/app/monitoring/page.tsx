@@ -2,6 +2,9 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
+
+import { SkeletonCard, SkeletonLine, SkeletonSurface, SkeletonTableRow } from '@/components/Skeleton';
+
 import { ConnectorSummary, useMonitoringSummary } from './MonitoringSummaryProvider';
 
 function getConnectorState(connector: ConnectorSummary) {
@@ -154,10 +157,57 @@ export default function MonitoringPage() {
 
   if (loading) {
     return (
-      <section className="mx-auto flex max-w-7xl flex-1 items-center justify-center px-4 py-24 sm:px-6 lg:px-8">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" aria-hidden />
-          <p className="text-sm font-medium text-gray-600">Loading monitoring data…</p>
+      <section
+        className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8"
+        aria-busy={true}
+      >
+        <div className="space-y-10" role="status" aria-live="polite">
+          <span className="sr-only">Loading monitoring overview…</span>
+
+          <header className="space-y-3">
+            <SkeletonLine width="w-40" height="h-4" />
+            <SkeletonLine width="w-1/2" height="h-9" />
+            <SkeletonLine width="w-48" height="h-4" />
+          </header>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <SkeletonCard key={index}>
+                <div className="space-y-4">
+                  <SkeletonLine width="w-2/3" height="h-4" />
+                  <SkeletonLine width="w-1/3" height="h-8" />
+                </div>
+              </SkeletonCard>
+            ))}
+          </div>
+
+          <SkeletonSurface className="overflow-hidden p-0">
+            <div className="border-b border-gray-200/70 bg-gray-50/80 px-4 py-4 dark:border-gray-700/60 dark:bg-slate-800/60 sm:px-6">
+              <SkeletonLine width="w-40" height="h-5" />
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200/70 dark:divide-gray-700/60" role="table">
+                <thead className="bg-gray-50/70 dark:bg-slate-800/70">
+                  <tr>
+                    {Array.from({ length: 5 }).map((_, index) => (
+                      <th key={index} scope="col" className="px-4 py-3 text-left sm:px-6">
+                        <SkeletonLine width="w-1/3" height="h-3" />
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200/70 dark:divide-gray-700/60">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <SkeletonTableRow
+                      key={index}
+                      columns={5}
+                      widths={['w-3/5', 'w-24', 'w-16', 'w-4/5', 'w-20']}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </SkeletonSurface>
         </div>
       </section>
     );
@@ -175,7 +225,7 @@ export default function MonitoringPage() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8" aria-busy={false}>
       <header className="mb-10">
         <p className="text-sm font-medium text-gray-500">Cluster: {summary?.clusterId ?? clusterId}</p>
         <h1 className="mt-1 text-3xl font-bold text-gray-900">Monitoring Overview</h1>
