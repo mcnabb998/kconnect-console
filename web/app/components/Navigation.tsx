@@ -13,6 +13,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { href: '/', label: 'Home', Icon: HomeIcon },
+  { href: '/cluster', label: 'Cluster', Icon: ClusterIcon },
   { href: '/monitoring', label: 'Monitoring', Icon: PulseIcon },
   { href: '/connectors/templates', label: 'Create', Icon: PlusSquareIcon },
   { href: '/capabilities', label: 'Capabilities', Icon: SparklesIcon },
@@ -83,6 +84,34 @@ function HomeIcon({ className }: { className?: string }) {
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ClusterIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M4.5 8.5h15M4.5 15.5h15M9 4.5v3M15 4.5v3M9 16.5v3M15 16.5v3"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <rect
+        x="4.5"
+        y="4.5"
+        width="15"
+        height="15"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.5"
       />
     </svg>
   );

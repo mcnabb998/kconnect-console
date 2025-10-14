@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -537,6 +538,52 @@ func redactSensitiveData(data interface{}) interface{} {
 	}
 }
 
+func copyHeaders(dst, src http.Header) {
+	for key, values := range src {
+		if strings.EqualFold(key, "Host") || strings.EqualFold(key, "Content-Length") {
+			continue
+		}
+		dst.Del(key)
+		for _, value := range values {
+			dst.Add(key, value)
+		}
+	}
+}
+
+func writeRedactedResponse(w http.ResponseWriter, resp *http.Response) error {
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read response body: %w", err)
+	}
+
+	var jsonData interface{}
+	if err := json.Unmarshal(body, &jsonData); err == nil {
+		redacted := redactSensitiveData(jsonData)
+		redactedBody, err := json.Marshal(redacted)
+		if err != nil {
+			return fmt.Errorf("marshal redacted data: %w", err)
+		}
+		body = redactedBody
+	}
+
+	for key, values := range resp.Header {
+		if strings.EqualFold(key, "Content-Length") {
+			continue
+		}
+		for _, value := range values {
+			w.Header().Add(key, value)
+		}
+	}
+
+	w.WriteHeader(resp.StatusCode)
+	if _, err := w.Write(body); err != nil {
+		return fmt.Errorf("write response body: %w", err)
+	}
+	return nil
+}
+
 // proxyHandler forwards requests to Kafka Connect and redacts sensitive data
 func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -568,7 +615,7 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Proxying %s %s to %s", r.Method, r.URL.Path, targetURL)
 
 	// Create the proxy request
-	proxyReq, err := http.NewRequest(r.Method, targetURL, r.Body)
+	proxyReq, err := http.NewRequestWithContext(r.Context(), r.Method, targetURL, r.Body)
 	if err != nil {
 		http.Error(w, "Failed to create proxy request", http.StatusInternalServerError)
 		log.Printf("Error creating proxy request: %v", err)
@@ -576,11 +623,7 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Copy headers
-	for key, values := range r.Header {
-		for _, value := range values {
-			proxyReq.Header.Add(key, value)
-		}
-	}
+	copyHeaders(proxyReq.Header, r.Header)
 
 	// Make the request
 	client := &http.Client{}
@@ -590,39 +633,55 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error proxying request: %v", err)
 		return
 	}
-	defer resp.Body.Close()
+	if err := writeRedactedResponse(w, resp); err != nil {
+		log.Printf("failed to stream proxy response: %v", err)
+	}
+}
 
-	// Read the response
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		http.Error(w, "Failed to read response", http.StatusInternalServerError)
-		log.Printf("Error reading response: %v", err)
+func clusterActionHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	action := vars["action"]
+
+	var targetURL string
+	switch strings.ToLower(action) {
+	case "restart", "restart-all":
+		targetURL = joinURL(connectURL, "connectors", "-", "restart")
+	case "rebalance":
+		targetURL = joinURL(connectURL, "admin", "rebalance")
+	default:
+		http.Error(w, fmt.Sprintf("unsupported cluster action: %s", action), http.StatusBadRequest)
 		return
 	}
 
-	// If response is JSON, redact sensitive data
-	var jsonData interface{}
-	if err := json.Unmarshal(body, &jsonData); err == nil {
-		redacted := redactSensitiveData(jsonData)
-		redactedBody, err := json.Marshal(redacted)
-		if err != nil {
-			http.Error(w, "Failed to marshal redacted data", http.StatusInternalServerError)
-			log.Printf("Error marshaling redacted data: %v", err)
-			return
-		}
-		body = redactedBody
+	payload, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		log.Printf("cluster action %s: read body error: %v", action, err)
+		return
 	}
 
-	// Copy response headers
-	for key, values := range resp.Header {
-		for _, value := range values {
-			w.Header().Add(key, value)
-		}
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, targetURL, bytes.NewReader(payload))
+	if err != nil {
+		http.Error(w, "Failed to create cluster action request", http.StatusInternalServerError)
+		log.Printf("cluster action %s: create request error: %v", action, err)
+		return
 	}
 
-	// Set status code and write response
-	w.WriteHeader(resp.StatusCode)
-	w.Write(body)
+	copyHeaders(req.Header, r.Header)
+	if len(payload) > 0 && req.Header.Get("Content-Type") == "" {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		http.Error(w, "Failed to execute cluster action", http.StatusBadGateway)
+		log.Printf("cluster action %s: proxy error: %v", action, err)
+		return
+	}
+
+	if err := writeRedactedResponse(w, resp); err != nil {
+		log.Printf("cluster action %s: failed to stream response: %v", action, err)
+	}
 }
 
 // healthHandler returns the health status
@@ -684,6 +743,11 @@ func main() {
 	router.HandleFunc("/api/{cluster}/connectors", proxyHandler).Methods("GET", "POST")
 	router.HandleFunc("/api/{cluster}/connectors/", proxyHandler).Methods("GET", "POST")
 	router.HandleFunc("/api/{cluster}/connectors/{path:.*}", proxyHandler).Methods("GET", "POST", "PUT", "DELETE")
+	router.HandleFunc("/api/{cluster}/workers", proxyHandler).Methods("GET")
+	router.HandleFunc("/api/{cluster}/workers/{path:.*}", proxyHandler).Methods("GET")
+	router.HandleFunc("/api/{cluster}/admin", proxyHandler).Methods("GET", "POST")
+	router.HandleFunc("/api/{cluster}/admin/{path:.*}", proxyHandler).Methods("GET", "POST")
+	router.HandleFunc("/api/{cluster}/cluster/actions/{action}", clusterActionHandler).Methods("POST")
 	// Plugins + validate
 	router.HandleFunc("/api/{cluster}/connector-plugins", proxyHandler).Methods("GET")
 	router.HandleFunc("/api/{cluster}/connector-plugins/{path:.*}", proxyHandler).Methods("GET", "PUT")
