@@ -480,9 +480,9 @@ export default function NewConnectorPage() {
                     }
                     return (a.order || 999) - (b.order || 999);
                   })
-                  .map(definition => (
+                  .map((definition, index) => (
                     <DynamicField
-                      key={definition.name}
+                      key={`${definition.name}-${index}`}
                       definition={definition}
                       value={configValues[definition.name]}
                       onChange={(value) => setConfigValues(prev => ({ ...prev, [definition.name]: value }))}
