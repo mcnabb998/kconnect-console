@@ -123,6 +123,63 @@ func joinURL(base string, parts ...string) string {
 	return trimmed
 }
 
+// fetchFromKafkaConnect makes a GET request to a Kafka Connect endpoint and returns the response body
+func fetchFromKafkaConnect(endpoint string) ([]byte, error) {
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest(http.MethodGet, joinURL(connectURL, endpoint), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, &connectUnavailableError{err: err}
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status from %s: %d", endpoint, resp.StatusCode)
+	}
+
+	return io.ReadAll(resp.Body)
+}
+
+// clusterInfoHandler returns Kafka Connect cluster information
+func clusterInfoHandler(w http.ResponseWriter, r *http.Request) {
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest(http.MethodGet, strings.TrimSuffix(connectURL, "/"), nil)
+	if err != nil {
+		http.Error(w, "Failed to create request", http.StatusInternalServerError)
+		log.Printf("cluster info: create request error: %v", err)
+		return
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(connectUnavailableError{err: err})
+		log.Printf("cluster info: request error: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		http.Error(w, fmt.Sprintf("Unexpected status from cluster endpoint: %d", resp.StatusCode), resp.StatusCode)
+		return
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "Failed to read response", http.StatusInternalServerError)
+		log.Printf("cluster info: read response error: %v", err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(body)
+}
+
 func fetchConnectorNames(ctx context.Context, client *http.Client, baseURL string) ([]string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, joinURL(baseURL, "connectors"), nil)
 	if err != nil {
@@ -733,6 +790,94 @@ func monitoringSummaryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// summaryHandler provides aggregated cluster information for the settings page
+func summaryHandler(w http.ResponseWriter, r *http.Request) {
+	// Aggregate data from multiple endpoints
+	type Summary struct {
+		ClusterInfo      map[string]interface{}   `json:"clusterInfo"`
+		ConnectorPlugins []map[string]interface{} `json:"connectorPlugins"`
+		ConnectorStats   struct {
+			Total   int `json:"total"`
+			Running int `json:"running"`
+			Failed  int `json:"failed"`
+			Paused  int `json:"paused"`
+		} `json:"connectorStats"`
+		WorkerInfo map[string]interface{} `json:"workerInfo"`
+	}
+
+	summary := Summary{}
+
+	// Fetch cluster info from root endpoint
+	clusterResp, err := http.Get(strings.TrimSuffix(connectURL, "/"))
+	if err == nil {
+		defer clusterResp.Body.Close()
+		if clusterResp.StatusCode == http.StatusOK {
+			body, err := io.ReadAll(clusterResp.Body)
+			if err == nil {
+				var clusterData map[string]interface{}
+				if err := json.Unmarshal(body, &clusterData); err == nil {
+					summary.ClusterInfo = clusterData
+				}
+			}
+		}
+	}
+
+	// Fetch connector plugins
+	pluginsResp, err := fetchFromKafkaConnect("connector-plugins")
+	if err == nil {
+		var pluginsData []map[string]interface{}
+		if err := json.Unmarshal(pluginsResp, &pluginsData); err == nil {
+			summary.ConnectorPlugins = pluginsData
+		}
+	}
+
+	// Fetch connector stats
+	connectorsResp, err := fetchFromKafkaConnect("connectors")
+	if err == nil {
+		var connectors []string
+		if err := json.Unmarshal(connectorsResp, &connectors); err == nil {
+			summary.ConnectorStats.Total = len(connectors)
+
+			// Count connector states (simplified for now)
+			for _, connectorName := range connectors {
+				statusResp, err := fetchFromKafkaConnect(fmt.Sprintf("connectors/%s/status", connectorName))
+				if err == nil {
+					var status map[string]interface{}
+					if err := json.Unmarshal(statusResp, &status); err == nil {
+						if connector, ok := status["connector"].(map[string]interface{}); ok {
+							if state, ok := connector["state"].(string); ok {
+								switch strings.ToUpper(state) {
+								case "RUNNING":
+									summary.ConnectorStats.Running++
+								case "FAILED":
+									summary.ConnectorStats.Failed++
+								case "PAUSED":
+									summary.ConnectorStats.Paused++
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Fetch worker info (first worker for simplicity)
+	workersResp, err := fetchFromKafkaConnect("workers")
+	if err == nil {
+		var workers []map[string]interface{}
+		if err := json.Unmarshal(workersResp, &workers); err == nil && len(workers) > 0 {
+			summary.WorkerInfo = workers[0]
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(summary); err != nil {
+		log.Printf("failed to encode summary response: %v", err)
+	}
+}
+
 func main() {
 	router := mux.NewRouter()
 
@@ -748,6 +893,9 @@ func main() {
 	router.HandleFunc("/api/{cluster}/admin", proxyHandler).Methods("GET", "POST")
 	router.HandleFunc("/api/{cluster}/admin/{path:.*}", proxyHandler).Methods("GET", "POST")
 	router.HandleFunc("/api/{cluster}/cluster/actions/{action}", clusterActionHandler).Methods("POST")
+	// Settings page endpoints
+	router.HandleFunc("/api/{cluster}/cluster", clusterInfoHandler).Methods("GET")
+	router.HandleFunc("/api/{cluster}/summary", summaryHandler).Methods("GET")
 	// Plugins + validate
 	router.HandleFunc("/api/{cluster}/connector-plugins", proxyHandler).Methods("GET")
 	router.HandleFunc("/api/{cluster}/connector-plugins/{path:.*}", proxyHandler).Methods("GET", "PUT")

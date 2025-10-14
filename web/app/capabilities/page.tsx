@@ -80,11 +80,13 @@ export default function CapabilitiesPage() {
       const validation = await validateConfig(pluginClass, {
         'connector.class': pluginClass,
       });
+      // Extract the definitions from the validation response structure
+      const definitions = validation.configs?.map(config => config.definition) || [];
       setCapabilities(prev => ({
         ...prev,
         [pluginClass]: {
           ...prev[pluginClass],
-          configDefinitions: validation.configs || [],
+          configDefinitions: definitions,
           loading: false,
         }
       }));

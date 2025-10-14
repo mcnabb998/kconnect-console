@@ -150,7 +150,9 @@ export default function NewConnectorPage() {
         'connector.class': pluginClass,
         ...initialConfig,
       });
-      setConfigDefinitions(validation.configs || []);
+      // Extract the definitions from the validation response structure
+      const definitions = validation.configs?.map(config => config.definition) || [];
+      setConfigDefinitions(definitions);
     } catch (error) {
       const message = error instanceof KafkaConnectApiError
         ? `Validation Error: ${error.message}`
@@ -169,10 +171,27 @@ export default function NewConnectorPage() {
       setValidating(true);
       setValidationErrors({});
       const validation = await validateConfig(selectedPlugin, configValues);
+      
+      // Extract errors from the new validation structure
+      const errors: Record<string, string[]> = {};
+      if (validation.configs) {
+        validation.configs.forEach(config => {
+          if (config.value.errors && config.value.errors.trim()) {
+            errors[config.value.name] = [config.value.errors];
+          }
+        });
+      }
+      
+      // Also check the legacy format for backward compatibility
       if (validation.value?.errors) {
-        setValidationErrors(validation.value.errors);
+        Object.assign(errors, validation.value.errors);
+      }
+      
+      if (Object.keys(errors).length > 0) {
+        setValidationErrors(errors);
         return false;
       }
+      
       return true;
     } catch (error) {
       const message = error instanceof KafkaConnectApiError

@@ -52,7 +52,16 @@ export default function DynamicField({ definition, value, onChange, error }: Dyn
       'quickstart': 'Predefined data template to use'
     };
     
-    return descriptions[name] || `Configuration for ${displayName}`;
+    if (name && descriptions[name]) {
+      return descriptions[name];
+    }
+    
+    // If we have no name or display_name, this is likely a malformed config definition
+    if (!name && !display_name) {
+      return 'Configuration field with missing metadata. Please check connector plugin.';
+    }
+    
+    return `Configuration for ${displayName}`;
   };
 
   const getPlaceholderText = () => {

@@ -86,8 +86,26 @@ export default function NewConnectorPage() {
           ...configValues,
         });
 
-        setConfigDefinitions(response.configs || []);
-        setValidationErrors(response.value?.errors || {});
+        // Extract the definitions from the validation response structure
+        const definitions = response.configs?.map(config => config.definition) || [];
+        setConfigDefinitions(definitions);
+        
+        // Extract errors from the new validation structure
+        const errors: Record<string, string[]> = {};
+        if (response.configs) {
+          response.configs.forEach(config => {
+            if (config.value.errors && config.value.errors.trim()) {
+              errors[config.value.name] = [config.value.errors];
+            }
+          });
+        }
+        
+        // Also check the legacy format for backward compatibility
+        if (response.value?.errors) {
+          Object.assign(errors, response.value.errors);
+        }
+        
+        setValidationErrors(errors);
       } catch (err) {
         console.error('Validation error:', err);
         setValidationErrors({});
@@ -120,9 +138,27 @@ export default function NewConnectorPage() {
         const response = await validateConfig(selectedPlugin, initialConfig);
         console.log('Validation response:', response);
         
-        setConfigDefinitions(response.configs || []);
+        // Extract the definitions from the validation response structure
+        const definitions = response.configs?.map(config => config.definition) || [];
+        setConfigDefinitions(definitions);
         setConfigValues(initialConfig);
-        setValidationErrors(response.value?.errors || {});
+        
+        // Extract errors from the new validation structure
+        const errors: Record<string, string[]> = {};
+        if (response.configs) {
+          response.configs.forEach(config => {
+            if (config.value.errors && config.value.errors.trim()) {
+              errors[config.value.name] = [config.value.errors];
+            }
+          });
+        }
+        
+        // Also check the legacy format for backward compatibility
+        if (response.value?.errors) {
+          Object.assign(errors, response.value.errors);
+        }
+        
+        setValidationErrors(errors);
       } catch (err) {
         console.error('Validation error:', err);
         if (err instanceof Error) {
