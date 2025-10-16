@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Connection Test</h1>
+    <div id="result"></div>
+    
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            let results = [];
+            
+            // Test GET request
+            try {
+                console.log('Testing GET /api/default/connectors');
+                const response = await fetch('http://localhost:8080/api/default/connectors');
+                console.log('GET Response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('GET Response data:', data);
+                    results.push(`✅ GET connectors: Status ${response.status}`);
+                } else {
+                    results.push(`❌ GET connectors: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                console.error('GET test failed:', error);
+                results.push(`❌ GET connectors: Network Error: ${error.message}`);
+            }
+            
+            // Test POST restart
+            try {
+                console.log('Testing POST /api/default/connectors/datagen-users/restart');
+                const response = await fetch('http://localhost:8080/api/default/connectors/datagen-users/restart', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                console.log('POST restart status:', response.status);
+                
+                if (response.ok) {
+                    results.push(`✅ POST restart: Status ${response.status}`);
+                } else {
+                    const errorText = await response.text();
+                    console.log('POST restart error:', errorText);
+                    results.push(`❌ POST restart: ${response.status} ${response.statusText} - ${errorText}`);
+                }
+            } catch (error) {
+                console.error('POST restart failed:', error);
+                results.push(`❌ POST restart: Network Error: ${error.message}`);
+            }
+            
+            // Test PUT pause
+            try {
+                console.log('Testing PUT /api/default/connectors/datagen-users/pause');
+                const response = await fetch('http://localhost:8080/api/default/connectors/datagen-users/pause', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                console.log('PUT pause status:', response.status);
+                
+                if (response.ok) {
+                    results.push(`✅ PUT pause: Status ${response.status}`);
+                } else {
+                    const errorText = await response.text();
+                    console.log('PUT pause error:', errorText);
+                    results.push(`❌ PUT pause: ${response.status} ${response.statusText} - ${errorText}`);
+                }
+            } catch (error) {
+                console.error('PUT pause failed:', error);
+                results.push(`❌ PUT pause: Network Error: ${error.message}`);
+            }
+            
+            resultDiv.innerHTML = results.map(r => `<p>${r}</p>`).join('');
+        }
+        
+        testAPI();
+    </script>
+</body>
+</html>

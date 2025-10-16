@@ -72,8 +72,8 @@ type RebalanceMetadata = {
 type ClusterAction = 'restart' | 'rebalance';
 
 const EMPTY_REBALANCE: RebalanceMetadata = {
-  state: undefined,
-  reason: undefined,
+  state: 'NOT_AVAILABLE',
+  reason: 'Rebalance status not supported by this Kafka Connect version',
   durationMs: null,
   lastRebalanceAt: null,
   raw: null,
@@ -81,7 +81,12 @@ const EMPTY_REBALANCE: RebalanceMetadata = {
 
 function normalizeState(value?: string | null) {
   if (typeof value === 'string' && value.trim().length > 0) {
-    return value.trim().toUpperCase();
+    const trimmed = value.trim().toUpperCase();
+    // Handle special cases for better UX
+    if (trimmed === 'NOT_AVAILABLE') {
+      return 'NOT AVAILABLE';
+    }
+    return trimmed;
   }
   return 'UNKNOWN';
 }
@@ -244,6 +249,8 @@ function getStateBadgeClasses(state: string) {
     case 'REBALANCING':
     case 'DEGRADED':
       return 'bg-yellow-100 text-yellow-700';
+    case 'NOT_AVAILABLE':
+      return 'bg-blue-100 text-blue-700';
     default:
       return 'bg-gray-100 text-gray-700';
   }
@@ -296,12 +303,16 @@ export default function ClusterPage() {
             const status = (await statusRes.json()) as ConnectorStatus;
             const tasks = (await tasksRes.json()) as ConnectorTask[];
 
+            // Use task status from the status endpoint, not the tasks endpoint
+            // The tasks endpoint returns config data, while status endpoint has state data
+            const taskStatuses = Array.isArray(status.tasks) ? status.tasks : [];
+
             return {
               name,
               state: normalizeState(status.connector?.state ?? status.state ?? undefined),
               type: status.type,
               workerId: status.connector?.worker_id,
-              tasks: Array.isArray(tasks) ? tasks : [],
+              tasks: taskStatuses,
             } satisfies ClusterConnector;
           })
         );
@@ -369,10 +380,13 @@ export default function ClusterPage() {
           if (seenWorkers.has(workerId)) {
             return;
           }
+          // Since workers endpoint is not available, infer state from connector data
+          // If a worker has active tasks, it's likely running
+          const workerState = count > 0 ? 'RUNNING' : 'UNKNOWN';
           workerSummaries.push({
             id: workerId,
             host: workerId.split(':')[0] ?? workerId,
-            state: 'UNKNOWN',
+            state: workerState,
             tasks: count,
             raw: null,
           });
@@ -473,12 +487,13 @@ export default function ClusterPage() {
         {connector.tasks.map((task) => {
           const taskState = normalizeState(task.state ?? undefined);
           const workerId = typeof task.worker_id === 'string' ? task.worker_id : '—';
+          const taskId = typeof task.id === 'number' ? task.id : typeof task.id === 'string' ? task.id : '—';
           return (
             <li
-              key={`${connector.name}-${task.id ?? workerId}`}
+              key={`${connector.name}-${taskId}`}
               className="flex items-center justify-between gap-4 rounded-panel border border-gray-200/70 bg-white/60 px-3 py-2 text-xs font-medium dark:border-gray-700/60 dark:bg-slate-900/60"
             >
-              <span className="font-semibold text-gray-700 dark:text-gray-200">Task {task.id ?? '—'}</span>
+              <span className="font-semibold text-gray-700 dark:text-gray-200">Task {taskId}</span>
               <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] ${getStateBadgeClasses(taskState)}`}>
                 {taskState}
               </span>
@@ -541,19 +556,19 @@ export default function ClusterPage() {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => void handleAction('rebalance')}
-              disabled={actionInFlight !== null}
-              className="inline-flex items-center gap-2 rounded-full border border-blue-500 px-4 py-2 text-sm font-medium text-blue-600 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={true}
+              title="Rebalance operation not supported by this Kafka Connect version"
+              className="inline-flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed opacity-60"
             >
-              {actionInFlight === 'rebalance' ? 'Requesting…' : 'Trigger rebalance'}
+              Trigger rebalance (unavailable)
             </button>
             <button
               type="button"
-              onClick={() => void handleAction('restart')}
-              disabled={actionInFlight !== null}
-              className="inline-flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={true}
+              title="Restart all operation not supported by this Kafka Connect version"
+              className="inline-flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed opacity-60"
             >
-              {actionInFlight === 'restart' ? 'Restarting…' : 'Restart all connectors'}
+              Restart all connectors (unavailable)
             </button>
             <button
               type="button"
@@ -655,17 +670,17 @@ export default function ClusterPage() {
                         <tr key={connector.name} className="transition hover:bg-gray-50/70 dark:hover:bg-slate-900/60">
                           <td className="px-4 py-4 font-medium text-gray-900 dark:text-gray-100 sm:px-6">
                             <Link href={`/connectors/${encodeURIComponent(connector.name)}`} className="hover:underline">
-                              {connector.name}
+                              {String(connector.name)}
                             </Link>
-                            {connector.type && <p className="mt-1 text-xs text-gray-500">{connector.type}</p>}
+                            {connector.type && <p className="mt-1 text-xs text-gray-500">{String(connector.type)}</p>}
                           </td>
                           <td className="px-4 py-4 sm:px-6">
                             <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getStateBadgeClasses(connector.state)}`}>
-                              {connector.state}
+                              {String(connector.state)}
                             </span>
                           </td>
                           <td className="px-4 py-4 text-gray-600 dark:text-gray-300 sm:px-6" title={worker}>
-                            {worker}
+                            {String(worker)}
                           </td>
                           <td className="px-4 py-4 sm:px-6">
                             {renderConnectorTasks(connector)}
@@ -706,7 +721,7 @@ export default function ClusterPage() {
                         </span>
                       </div>
                       <div className="mt-3 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                        <span>{worker.tasks} assigned tasks</span>
+                        <span>{typeof worker.tasks === 'number' ? worker.tasks : 0} assigned tasks</span>
                         {worker.raw && typeof worker.raw.version === 'string' && worker.raw.version && <span>v{worker.raw.version}</span>}
                       </div>
                     </li>
