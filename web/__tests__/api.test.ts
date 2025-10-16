@@ -18,6 +18,26 @@ describe('lib/api', () => {
   const fetchMock = jest.fn();
   const originalFetch = global.fetch;
 
+  // Helper function to create properly mocked Response objects
+  const createMockResponse = (overrides: Partial<Response> = {}): Response => ({
+    ok: true,
+    status: 200,
+    statusText: 'OK',
+    headers: new Headers(),
+    redirected: false,
+    type: 'basic' as ResponseType,
+    url: 'http://example.com',
+    clone: function() { return this; },
+    body: null,
+    bodyUsed: false,
+    arrayBuffer: async () => new ArrayBuffer(0),
+    blob: async () => new Blob(),
+    formData: async () => new FormData(),
+    json: async () => ({}),
+    text: async () => '',
+    ...overrides,
+  } as Response);
+
   beforeEach(() => {
     jest.resetAllMocks();
     fetchMock.mockReset();
@@ -28,14 +48,15 @@ describe('lib/api', () => {
     global.fetch = originalFetch;
   });
 
-  const jsonResponse = (value: unknown, init: Partial<Response> = {}) => ({
-    ok: true,
-    status: 200,
-    statusText: 'OK',
-    text: async () => JSON.stringify(value),
-    json: async () => value,
-    ...init,
-  }) as unknown as Response;
+  const jsonResponse = (value: unknown, init: Partial<Response> = {}) => 
+    createMockResponse({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      text: async () => JSON.stringify(value),
+      json: async () => value,
+      ...init,
+    });
 
   it('lists plugins via the proxy API', async () => {
     const payload = [
@@ -56,7 +77,7 @@ describe('lib/api', () => {
   });
 
   it('propagates empty JSON bodies as undefined', async () => {
-    fetchMock.mockResolvedValue({
+    fetchMock.mockResolvedValue(createMockResponse({
       ok: true,
       status: 204,
       statusText: 'No Content',
@@ -64,7 +85,7 @@ describe('lib/api', () => {
       json: async () => {
         throw new Error('not called');
       },
-    } as Response);
+    }));
 
     await expect(performConnectorAction('alpha', 'delete')).resolves.toBeUndefined();
     expect(fetchMock).toHaveBeenCalledWith(
@@ -95,7 +116,7 @@ describe('lib/api', () => {
   });
 
   it('falls back to status text when error payload is not JSON', async () => {
-    fetchMock.mockResolvedValue({
+    fetchMock.mockResolvedValue(createMockResponse({
       ok: false,
       status: 500,
       statusText: 'Internal Server Error',
@@ -103,7 +124,7 @@ describe('lib/api', () => {
         throw new Error('boom');
       },
       text: async () => '',
-    } as Response);
+    }));
 
     await expect(getConnector('alpha')).rejects.toThrow('HTTP 500: Internal Server Error');
   });
