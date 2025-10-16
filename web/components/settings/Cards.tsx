@@ -12,7 +12,7 @@ interface ConnectorPlugin {
 
 interface Summary {
   clusterInfo: ClusterInfo;
-  connectorPlugins: ConnectorPlugin[];
+  connectorPlugins?: ConnectorPlugin[];
   connectorStats: {
     total: number;
     running: number;
@@ -29,7 +29,7 @@ interface CardsProps {
 }
 
 export default function Cards({ summary }: CardsProps) {
-  const { clusterInfo, connectorStats, connectorPlugins, workerInfo } = summary;
+  const { clusterInfo, connectorStats, connectorPlugins = [], workerInfo } = summary;
 
   return (
     <div className="space-y-6">
@@ -130,18 +130,18 @@ export default function Cards({ summary }: CardsProps) {
             <dl className="space-y-3">
               <div>
                 <dt className="text-sm font-medium text-gray-500">Total Plugins</dt>
-                <dd className="text-sm text-gray-900">{connectorPlugins.length}</dd>
+                <dd className="text-sm text-gray-900">{connectorPlugins?.length ?? 0}</dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Source Connectors</dt>
                 <dd className="text-sm text-gray-900">
-                  {connectorPlugins.filter(p => p.type === 'source').length}
+                  {connectorPlugins?.filter(p => p.type === 'source').length ?? 0}
                 </dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Sink Connectors</dt>
                 <dd className="text-sm text-gray-900">
-                  {connectorPlugins.filter(p => p.type === 'sink').length}
+                  {connectorPlugins?.filter(p => p.type === 'sink').length ?? 0}
                 </dd>
               </div>
             </dl>
