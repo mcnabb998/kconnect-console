@@ -150,11 +150,84 @@ make sample-connector
          "max.interval": 1000,
          "iterations": 10000000,
          "tasks.max": "1"
-       }
-     }'
-   ```
+     }
+   }'
+```
 
-5. Stop all services:
+## Development Setup
+
+### Testing Infrastructure
+
+This project includes comprehensive testing with 87% Go coverage and 78% React coverage.
+
+**Run all tests:**
+```bash
+# Using Make (recommended)
+make test
+
+# Or individually
+cd proxy && go test -v -cover ./...
+cd web && npm test -- --coverage
+```
+
+**CI/CD Pipeline:**
+- GitHub Actions automatically run tests on every push
+- Integration tests validate the full Docker stack
+- Pre-commit hooks ensure code quality
+
+**Set up pre-commit hooks:**
+```bash
+# Install pre-commit hooks for automatic code quality checks
+./scripts/setup-precommit.sh
+```
+
+The pre-commit hooks will automatically run:
+- Go tests and formatting
+- React tests and TypeScript checking
+- Code linting and formatting
+
+### Local Development (without Docker)
+
+**Prerequisites:**
+- Go 1.21+ 
+- Node.js 20+
+- Running Kafka Connect instance (for proxy development)
+
+**Start the proxy:**
+```bash
+cd proxy
+KAFKA_CONNECT_URL=http://localhost:8083 go run main.go
+# Available at http://localhost:8080
+```
+
+**Start the web UI:**
+```bash
+cd web
+npm install
+npm run dev
+# Available at http://localhost:3000
+```
+
+**Environment variables for web development:**
+```bash
+# web/.env.local
+NEXT_PUBLIC_PROXY_URL=http://localhost:8080
+NEXT_PUBLIC_CLUSTER_ID=default
+```
+
+### Integration Testing
+
+For full end-to-end testing with the complete Kafka stack:
+
+```bash
+cd compose
+docker compose up -d
+# Wait for services to start (~2 minutes)
+# Test endpoints:
+curl http://localhost:8080/health
+curl http://localhost:8080/api/default/connectors
+curl http://localhost:8080/api/default/monitoring/summary
+```5. Stop all services:
    ```bash
    cd compose
    docker-compose down
