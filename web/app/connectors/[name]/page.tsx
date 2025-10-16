@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 import { SkeletonBadge, SkeletonCard, SkeletonLine } from '@/components/Skeleton';
+import TransformationsTab from './TransformationsTab';
+import type { ConnectorGetResponse } from '@/types/connect';
 
 const PROXY = process.env.NEXT_PUBLIC_PROXY_URL ?? 'http://localhost:8080';
 
@@ -22,13 +24,6 @@ interface ConnectorStatus {
   type: string;
 }
 
-interface ConnectorConfig {
-  name: string;
-  config: Record<string, any>;
-  tasks: Array<{ connector: string; task: number }>;
-  type: string;
-}
-
 export default function ConnectorDetail() {
   const params = useParams();
   const router = useRouter();
@@ -36,11 +31,12 @@ export default function ConnectorDetail() {
   const cluster = 'default';
 
   const [status, setStatus] = useState<ConnectorStatus | null>(null);
-  const [config, setConfig] = useState<ConnectorConfig | null>(null);
+  const [config, setConfig] = useState<ConnectorGetResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [showCreatedToast, setShowCreatedToast] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'transformations'>('overview');
 
   useEffect(() => {
     if (name) {
@@ -73,7 +69,7 @@ export default function ConnectorDetail() {
       }
 
       const statusData = await statusRes.json();
-      const configData = await configRes.json();
+      const configData: ConnectorGetResponse = await configRes.json();
 
       setStatus(statusData);
       setConfig(configData);
@@ -209,16 +205,30 @@ export default function ConnectorDetail() {
     );
   }
 
+  const tabButton = (tab: 'overview' | 'transformations', label: string) => (
+    <button
+      key={tab}
+      type="button"
+      onClick={() => setActiveTab(tab)}
+      className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+        activeTab === tab
+          ? 'border-blue-500 text-blue-600'
+          : 'border-transparent text-gray-500 hover:text-gray-700'
+      }`}
+      aria-selected={activeTab === tab}
+      role="tab"
+    >
+      {label}
+    </button>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <Link
-                href="/"
-                className="text-blue-500 hover:text-blue-700 mr-4"
-              >
+              <Link href="/" className="text-blue-500 hover:text-blue-700 mr-4">
                 ← Back
               </Link>
               <h1 className="text-3xl font-bold text-gray-900">{name}</h1>
@@ -234,106 +244,119 @@ export default function ConnectorDetail() {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {showCreatedToast && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-4">
-              <p className="font-bold">Success!</p>
-              <p>Connector "{name}" has been created successfully.</p>
-            </div>
-          )}
-          
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-              <p className="font-bold">Error</p>
-              <p>{error}</p>
-            </div>
-          )}
+          <nav className="mb-6 flex gap-4 border-b" role="tablist" aria-label="Connector detail sections">
+            {tabButton('overview', 'Overview')}
+            {tabButton('transformations', 'Transformations')}
+          </nav>
 
-          {/* Actions */}
-          <div className="mb-6 flex gap-2 flex-wrap">
-            <button
-              onClick={() => handleAction('pause')}
-              disabled={actionLoading || status?.connector.state === 'PAUSED'}
-              className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Pause
-            </button>
-            <button
-              onClick={() => handleAction('resume')}
-              disabled={actionLoading || status?.connector.state !== 'PAUSED'}
-              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Resume
-            </button>
-            <button
-              onClick={() => handleAction('restart')}
-              disabled={actionLoading}
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Restart
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={actionLoading}
-              className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed ml-auto"
-            >
-              Delete
-            </button>
-          </div>
+          {activeTab === 'overview' ? (
+            <div className="space-y-6">
+              {showCreatedToast && (
+                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+                  <p className="font-bold">Success!</p>
+                  <p>Connector "{name}" has been created successfully.</p>
+                </div>
+              )}
 
-          {/* Status */}
-          {status && (
-            <div className="bg-white shadow rounded-lg p-6 mb-6">
-              <h2 className="text-xl font-semibold mb-4">Status</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Connector State</p>
-                  <p className="mt-1 text-lg">{status.connector.state}</p>
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                  <p className="font-bold">Error</p>
+                  <p>{error}</p>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Worker ID</p>
-                  <p className="mt-1 text-lg">{status.connector.worker_id}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Type</p>
-                  <p className="mt-1 text-lg">{status.type}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Tasks</p>
-                  <p className="mt-1 text-lg">{status.tasks.length}</p>
-                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => handleAction('pause')}
+                  disabled={actionLoading || status?.connector.state === 'PAUSED'}
+                  className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Pause
+                </button>
+                <button
+                  onClick={() => handleAction('resume')}
+                  disabled={actionLoading || status?.connector.state !== 'PAUSED'}
+                  className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Resume
+                </button>
+                <button
+                  onClick={() => handleAction('restart')}
+                  disabled={actionLoading}
+                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Restart
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={actionLoading}
+                  className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed ml-auto"
+                >
+                  Delete
+                </button>
               </div>
 
-              {status.tasks.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-semibold mb-3">Tasks</h3>
-                  <div className="space-y-2">
-                    {status.tasks.map((task) => (
-                      <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                        <div>
-                          <span className="font-medium">Task {task.id}</span>
-                          <span className="text-gray-500 ml-2">{task.worker_id}</span>
-                        </div>
-                        <span className={`px-2 py-1 rounded text-xs font-semibold ${getStateColor(task.state)}`}>
-                          {task.state}
-                        </span>
+              {status && (
+                <div className="bg-white shadow rounded-lg p-6">
+                  <h2 className="text-xl font-semibold mb-4">Status</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Connector State</p>
+                      <p className="mt-1 text-lg">{status.connector.state}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Worker ID</p>
+                      <p className="mt-1 text-lg">{status.connector.worker_id}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Type</p>
+                      <p className="mt-1 text-lg">{status.type}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Tasks</p>
+                      <p className="mt-1 text-lg">{status.tasks.length}</p>
+                    </div>
+                  </div>
+
+                  {status.tasks.length > 0 && (
+                    <div className="mt-6">
+                      <h3 className="text-lg font-semibold mb-3">Tasks</h3>
+                      <div className="space-y-2">
+                        {status.tasks.map((task) => (
+                          <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                            <div>
+                              <span className="font-medium">Task {task.id}</span>
+                              <span className="text-gray-500 ml-2">{task.worker_id}</span>
+                            </div>
+                            <span className={`px-2 py-1 rounded text-xs font-semibold ${getStateColor(task.state)}`}>
+                              {task.state}
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {config && (
+                <div className="bg-white shadow rounded-lg p-6">
+                  <h2 className="text-xl font-semibold mb-4">Configuration</h2>
+                  <div className="bg-gray-50 rounded p-4 overflow-x-auto">
+                    <pre className="text-sm">{JSON.stringify(config.config, null, 2)}</pre>
                   </div>
                 </div>
               )}
             </div>
-          )}
-
-          {/* Configuration */}
-          {config && (
-            <div className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold mb-4">Configuration</h2>
-              <div className="bg-gray-50 rounded p-4 overflow-x-auto">
-                <pre className="text-sm">
-                  {JSON.stringify(config.config, null, 2)}
-                </pre>
-              </div>
-            </div>
+          ) : (
+            <TransformationsTab
+              name={name}
+              initialConnector={config}
+              onConfigUpdated={(updated) => {
+                setConfig(updated);
+                fetchConnectorDetails();
+              }}
+            />
           )}
         </div>
       </main>
