@@ -22,7 +22,7 @@ repos:
         
       - id: react-test
         name: React Tests
-        entry: bash -c 'cd web && npm test -- --watchAll=false'
+        entry: bash -c 'cd web && npm test -- -- --watchAll=false'
         language: system
         files: \.(ts|tsx|js|jsx)$
         pass_filenames: false
