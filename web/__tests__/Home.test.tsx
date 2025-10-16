@@ -4,10 +4,17 @@ import Home from '../app/page';
 describe('Home page', () => {
   const fetchMock = jest.fn();
 
+  let consoleErrorSpy: jest.SpyInstance;
+
   beforeEach(() => {
     jest.resetAllMocks();
     fetchMock.mockReset();
     global.fetch = fetchMock as unknown as typeof fetch;
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   it('shows a loading indicator while fetching connectors', () => {
@@ -15,7 +22,9 @@ describe('Home page', () => {
 
     render(<Home />);
 
-    expect(screen.getByText('Loading connectors…')).toBeInTheDocument();
+    const status = screen.getByRole('status');
+    expect(status).toHaveAttribute('aria-live', 'polite');
+    expect(screen.getAllByText(/Loading connectors/i).length).toBeGreaterThan(0);
   });
 
   it('renders connectors when the fetch succeeds', async () => {
@@ -46,9 +55,7 @@ describe('Home page', () => {
     render(<Home />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText('No connectors found. Start by creating a new connector using our template-based wizard.')
-      ).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'No connectors yet' })).toBeInTheDocument();
     });
   });
 

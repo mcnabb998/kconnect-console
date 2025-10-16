@@ -9,13 +9,25 @@ const __dirname = dirname(__filename);
 
 const args = process.argv.slice(2);
 let coverage = false;
-const passthrough = [];
+const nodePassthrough = [];
+let jestArgs = [];
+let collectingJestArgs = false;
 
 for (const arg of args) {
   if (arg === '--coverage') {
     coverage = true;
+    continue;
+  }
+
+  if (arg === '--') {
+    collectingJestArgs = true;
+    continue;
+  }
+
+  if (collectingJestArgs) {
+    jestArgs.push(arg);
   } else {
-    passthrough.push(arg);
+    nodePassthrough.push(arg);
   }
 }
 
@@ -29,17 +41,45 @@ if (coverage) {
   nodeArgs.push('--experimental-test-coverage');
 }
 
-nodeArgs.push(...passthrough);
+nodeArgs.push(...nodePassthrough);
 
-const child = spawn(process.execPath, nodeArgs, {
-  stdio: 'inherit',
-  env,
-});
+const run = (command, commandArgs) =>
+  new Promise((resolve, reject) => {
+    const child = spawn(command, commandArgs, {
+      stdio: 'inherit',
+      env,
+    });
 
-child.on('exit', (code, signal) => {
-  if (signal) {
-    process.kill(process.pid, signal);
-  } else {
-    process.exit(code ?? 0);
+    child.on('exit', (code, signal) => {
+      if (signal) {
+        process.kill(process.pid, signal);
+        return;
+      }
+
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`${command} exited with code ${code}`));
+      }
+    });
+  });
+
+const main = async () => {
+  await run(process.execPath, nodeArgs);
+
+  const jestBin = resolve(__dirname, '..', 'node_modules', 'jest', 'bin', 'jest.js');
+  const finalJestArgs = ['--runInBand'];
+
+  if (coverage && !jestArgs.includes('--coverage')) {
+    finalJestArgs.push('--coverage');
   }
+
+  finalJestArgs.push(...jestArgs);
+
+  await run(process.execPath, [jestBin, ...finalJestArgs]);
+};
+
+main().catch((error) => {
+  console.error(error.message || error);
+  process.exit(1);
 });

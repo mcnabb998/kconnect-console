@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import ConnectorDetail from '../app/connectors/[name]/page';
 import { useParams, useRouter } from 'next/navigation';
 
@@ -6,8 +6,40 @@ describe('ConnectorDetail page', () => {
   const fetchMock = jest.fn();
   const mockedUseParams = useParams as unknown as jest.Mock;
   const mockedUseRouter = useRouter as unknown as jest.Mock;
+  const originalConfirm = window.confirm;
+
+  const baseStatus = {
+    name: 'connector-one',
+    connector: { state: 'RUNNING', worker_id: 'worker-1' },
+    tasks: [],
+    type: 'source',
+  };
+
+  const baseConfig = {
+    name: 'connector-one',
+    config: { topics: 'alpha' },
+    tasks: [],
+    type: 'source',
+  };
+
+  const makeResponse = <T,>(data: T, ok = true): Response =>
+    ({
+      ok,
+      json: async () => data,
+    }) as Response;
+
+  const queueSuccessfulFetch = (
+    status: any = baseStatus,
+    config: any = baseConfig
+  ) => {
+    fetchMock.mockResolvedValueOnce(makeResponse(status));
+    fetchMock.mockResolvedValueOnce(makeResponse(config));
+  };
+
   let replace: jest.Mock;
   let push: jest.Mock;
+
+  let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.resetAllMocks();
@@ -18,11 +50,15 @@ describe('ConnectorDetail page', () => {
     mockedUseParams.mockReturnValue({ name: 'connector-one' });
     mockedUseRouter.mockReturnValue({ replace, push });
     window.history.replaceState({}, '', '/connectors/connector-one');
+    window.confirm = originalConfirm;
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
     jest.useRealTimers();
     window.history.replaceState({}, '', '/');
+    window.confirm = originalConfirm;
+    consoleErrorSpy.mockRestore();
   });
 
   it('shows a loading indicator while connector details are loading', () => {
@@ -30,51 +66,43 @@ describe('ConnectorDetail page', () => {
 
     render(<ConnectorDetail />);
 
-    expect(screen.getByText('Loading connector details...')).toBeInTheDocument();
+    const status = screen.getByRole('status');
+    expect(status).toHaveAttribute('aria-live', 'polite');
+    expect(screen.getByText(/Loading connector details/i)).toBeInTheDocument();
   });
 
   it('renders connector details and dismisses the creation toast', async () => {
     jest.useFakeTimers();
+    const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
 
-    const statusResponse = {
-      ok: true,
-      json: async () => ({
+    queueSuccessfulFetch(
+      {
         name: 'connector-one',
         connector: { state: 'RUNNING', worker_id: 'worker-1' },
-        tasks: [
-          { id: 1, state: 'RUNNING', worker_id: 'worker-1' }
-        ],
-        type: 'sink'
-      })
-    } as Response;
-
-    const configResponse = {
-      ok: true,
-      json: async () => ({
+        tasks: [{ id: 1, state: 'RUNNING', worker_id: 'worker-1' }],
+        type: 'sink',
+      },
+      {
         name: 'connector-one',
         config: {
           'connector.class': 'io.confluent.kafka.connect.datagen.DatagenConnector',
           'tasks.max': '1',
-          topics: 'test-topic'
+          topics: 'test-topic',
         },
         tasks: [],
-        type: 'sink'
-      })
-    } as Response;
-
-    fetchMock.mockResolvedValueOnce(statusResponse).mockResolvedValueOnce(configResponse);
+        type: 'sink',
+      }
+    );
 
     window.history.replaceState({}, '', '/connectors/connector-one?created=true');
 
     render(<ConnectorDetail />);
 
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Status' })).toBeInTheDocument();
-      expect(screen.getByText('Task 1')).toBeInTheDocument();
-      expect(
-        screen.getByText('Connector "connector-one" has been created successfully.')
-      ).toBeInTheDocument();
-    });
+    await screen.findByRole('heading', { name: 'Status' });
+    expect(screen.getByText('Task 1')).toBeInTheDocument();
+    expect(
+      screen.getByText('Connector "connector-one" has been created successfully.')
+    ).toBeInTheDocument();
 
     expect(screen.getAllByText('RUNNING').length).toBeGreaterThan(0);
     expect(screen.getAllByText('worker-1')[0]).toBeInTheDocument();
@@ -85,8 +113,10 @@ describe('ConnectorDetail page', () => {
       screen.getByText(/"connector.class": "io\.confluent\.kafka\.connect\.datagen\.DatagenConnector"/)
     ).toBeInTheDocument();
 
-    act(() => {
-      jest.runOnlyPendingTimers();
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 5000);
+
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
     });
 
     await waitFor(() => {
@@ -94,6 +124,8 @@ describe('ConnectorDetail page', () => {
         screen.queryByText('Connector "connector-one" has been created successfully.')
       ).not.toBeInTheDocument();
     });
+
+    setTimeoutSpy.mockRestore();
   });
 
   it('displays an error message when fetching details fails', async () => {
@@ -115,5 +147,142 @@ describe('ConnectorDetail page', () => {
     });
 
     expect(screen.getByText('Error')).toBeInTheDocument();
+  });
+
+  it('schedules a refresh after successful actions', async () => {
+    jest.useFakeTimers();
+    const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+
+    queueSuccessfulFetch();
+
+    render(<ConnectorDetail />);
+
+    await screen.findByText('Connector State');
+
+    fetchMock.mockResolvedValueOnce(makeResponse({}, true));
+    queueSuccessfulFetch({
+      ...baseStatus,
+      connector: { ...baseStatus.connector, state: 'PAUSED' },
+    });
+
+    const pauseActionIndex = fetchMock.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(pauseActionIndex + 1);
+    });
+
+    const pauseCall = fetchMock.mock.calls[pauseActionIndex];
+    expect(pauseCall?.[0]).toContain('/connectors/connector-one/pause');
+    expect(pauseCall?.[1]).toMatchObject({ method: 'PUT' });
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 1000);
+
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText('PAUSED').length).toBeGreaterThan(0);
+    });
+
+    fetchMock.mockResolvedValueOnce(makeResponse({}, true));
+    queueSuccessfulFetch();
+
+    const restartActionIndex = fetchMock.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(restartActionIndex + 1);
+    });
+
+    const restartCall = fetchMock.mock.calls[restartActionIndex];
+    expect(restartCall?.[0]).toContain('/connectors/connector-one/restart');
+    expect(restartCall?.[1]).toMatchObject({ method: 'POST' });
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 1000);
+
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText('RUNNING').length).toBeGreaterThan(0);
+    });
+
+    setTimeoutSpy.mockRestore();
+  });
+
+  it('shows errors when actions fail', async () => {
+    queueSuccessfulFetch();
+
+    render(<ConnectorDetail />);
+
+    await screen.findByText('Connector State');
+
+    fetchMock.mockResolvedValueOnce(makeResponse({}, false));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+
+    await screen.findByText('Failed to pause connector');
+  });
+
+  it('redirects after successful deletion', async () => {
+    queueSuccessfulFetch();
+
+    render(<ConnectorDetail />);
+
+    await screen.findByText('Connector State');
+
+    const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true);
+    fetchMock.mockResolvedValueOnce(makeResponse({}, true));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledWith('/');
+    });
+
+    const deleteCall = fetchMock.mock.calls.at(-1);
+    expect(deleteCall?.[0]).toContain('/connectors/connector-one');
+    expect(deleteCall?.[1]).toMatchObject({ method: 'DELETE' });
+
+    confirmSpy.mockRestore();
+  });
+
+  it('does not delete the connector when confirmation is cancelled', async () => {
+    queueSuccessfulFetch();
+
+    render(<ConnectorDetail />);
+
+    await screen.findByText('Connector State');
+
+    const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+    expect(push).not.toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
+  });
+
+  it('surfaces errors when deletion fails', async () => {
+    queueSuccessfulFetch();
+
+    render(<ConnectorDetail />);
+
+    await screen.findByText('Connector State');
+
+    const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true);
+    fetchMock.mockResolvedValueOnce(makeResponse({}, false));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    await screen.findByText('Failed to delete connector');
+
+    expect(push).not.toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
   });
 });
