@@ -53,7 +53,7 @@ export default function SettingsPage() {
         }
       } catch (err) {
         console.error('Failed to load settings data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load data');
+        setError(err && typeof err === 'object' && 'message' in err ? String(err.message) : String(err));
       } finally {
         setLoading(false);
       }

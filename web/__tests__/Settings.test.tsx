@@ -61,8 +61,10 @@ describe('Settings Page', () => {
     it('renders settings page with overview tab active by default', async () => {
       render(<Settings />);
       
+      // Wait for the component to finish loading and show tabs
       await waitFor(() => {
         expect(screen.getByText('Settings')).toBeInTheDocument();
+        expect(screen.getByText('Overview')).toBeInTheDocument();
       });
 
       // Overview tab should be active by default
@@ -95,9 +97,11 @@ describe('Settings Page', () => {
       const user = userEvent.setup();
       render(<Settings />);
 
-      // Wait for initial load
+      // Wait for initial load to complete and tabs to be visible
       await waitFor(() => {
         expect(screen.getByText('Settings')).toBeInTheDocument();
+        expect(screen.getByText('Overview')).toBeInTheDocument();
+        expect(screen.getByText('Plugins')).toBeInTheDocument();
       });
 
       const pluginsTab = screen.getByRole('button', { name: /plugins/i });
@@ -118,8 +122,11 @@ describe('Settings Page', () => {
 
       render(<Settings />);
 
+      // Wait for initial load to complete and tabs to be visible
       await waitFor(() => {
         expect(screen.getByText('Settings')).toBeInTheDocument();
+        expect(screen.getByText('Overview')).toBeInTheDocument();
+        expect(screen.getByText('Plugins')).toBeInTheDocument();
       });
 
       const pluginsTab = screen.getByRole('button', { name: /plugins/i });
@@ -206,7 +213,7 @@ describe('Settings Page', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Error Loading Settings')).toBeInTheDocument();
-        expect(screen.getByText('Failed to load data')).toBeInTheDocument();
+        expect(screen.getByText('Unknown error')).toBeInTheDocument();
       });
     });
   });
