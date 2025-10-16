@@ -241,7 +241,7 @@ export default function TransformationsTab({
         return;
       }
 
-      queueMicrotask(() => {
+      Promise.resolve().then(() => {
         setSmts((items) =>
           items.map((item) => (item.alias === currentAlias ? { ...updated } : { ...item }))
         );
