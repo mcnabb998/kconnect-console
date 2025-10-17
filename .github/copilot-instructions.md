@@ -3,6 +3,12 @@
 ## Project Overview
 A Kafka Connect management console with Go proxy (credential redaction, CORS) and Next.js UI. Three Docker services: `kconnect-proxy` (:8080), `kconnect-web` (:3000), and a Kafka stack (Kafka Connect :8083, Kafka :9092, Zookeeper :2181).
 
+**Current Tech Stack:**
+- **Backend**: Go 1.21 with Gorilla Mux router 
+- **Frontend**: Next.js 15.5.4 with React 19.1.0, Tailwind CSS 4, TypeScript
+- **Testing**: Jest 29.7+ (46 tests across 7 suites), Go testing with coverage
+- **Architecture**: Next.js App Router, server/client components
+
 ## Critical Architecture Rules
 
 ### 1. Kafka Network Configuration ⚠️
@@ -76,14 +82,21 @@ make dev-proxy
 make dev-web
 ```
 
+### Key Application Structure
+- **Root Layout**: `web/app/layout.tsx` provides global providers (MonitoringSummaryProvider, ErrorBoundary)
+- **Navigation**: Sidebar navigation in `web/app/components/Navigation.tsx`
+- **Pages**: 9 distinct routes including dynamic `[name]` connector details
+- **Global State**: React Context for monitoring data, no external state management
+
 ## Code Patterns
 
-### Frontend (Next.js App Router)
+### Frontend (Next.js 15 App Router)
 - **Client components**: Use `'use client'` directive for interactive components
 - **API calls**: Use `web/lib/api.ts` utilities, not direct fetch
 - **Environment**: `NEXT_PUBLIC_PROXY_URL` defaults to `http://localhost:8080`
-- **Routing**: Next.js 13+ App Router in `web/app/`
+- **Routing**: Next.js App Router in `web/app/` with dynamic routes `[name]/page.tsx`
 - **Styling**: Tailwind CSS 4 (see `web/app/globals.css`)
+- **Types**: Centralized in `web/types/connect.ts` for Kafka Connect API objects
 
 Example from `web/lib/api.ts`:
 ```typescript
@@ -102,6 +115,12 @@ Pre-configured templates in `web/data/connectorTemplates.ts`:
 - UI dynamically checks plugin availability via `/connector-plugins` endpoint
 - Visual indicators: 🟢 Available / 🔴 Missing plugin
 
+### Component Architecture
+- **Bulk Actions**: `ConnectorBulkActions.tsx` handles multiple connector operations
+- **Dynamic Forms**: `DynamicField.tsx` renders connector config fields by type
+- **Skeletons**: `Skeleton.tsx` provides loading states with proper accessibility
+- **Transformations**: Dedicated tab for SMT (Single Message Transform) configuration
+
 ## Testing Conventions
 
 ### Go Tests (`proxy/`)
@@ -111,10 +130,12 @@ Pre-configured templates in `web/data/connectorTemplates.ts`:
 - Run: `go test -v -cover ./...`
 
 ### Jest Tests (`web/`)
+- **46 tests across 7 suites** covering components and API interactions
 - Config: `jest.config.js`, setup in `jest.setup.ts`
 - Test files: `__tests__/*.test.tsx` or `*.test.ts`
 - Run: `npm run test -- --coverage`
 - Use Testing Library for React components
+- **Test patterns**: Mock fetch, test error boundaries, validate user interactions
 
 ## Common Pitfalls
 
@@ -129,8 +150,9 @@ Pre-configured templates in `web/data/connectorTemplates.ts`:
 - `web/lib/api.ts`: Frontend API utilities, plugin availability checking
 - `compose/docker-compose.yml`: Service definitions and critical Kafka listeners config
 - `web/data/connectorTemplates.ts`: Predefined connector templates
-- `ARCHITECTURE.md`, `AI-AGENT.md`: Detailed architecture and agent guidelines
-- `TESTING.md`: Comprehensive testing procedures
+- `web/types/connect.ts`: TypeScript types for Kafka Connect API objects
+- `web/components/`: Reusable UI components (Skeleton, DynamicField, etc.)
+- `web/app/`: Next.js App Router pages (9 distinct routes)
 - `Makefile`: All development commands
 
 ## AI Agent Best Practices
