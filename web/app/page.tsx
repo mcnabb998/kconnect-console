@@ -7,6 +7,7 @@ import { ConnectorBulkActions } from '@/components/ConnectorBulkActions';
 import { SkeletonCard, SkeletonLine, SkeletonSurface } from '@/components/Skeleton';
 import { performConnectorAction, type ConnectorAction } from '@/lib/api';
 import { buildApiUrl, API_CONFIG } from '@/lib/config';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 const CLUSTER_ID = API_CONFIG.clusterId;
 
@@ -96,7 +97,7 @@ export default function Home() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(connectorsEndpoint, { cache: 'no-store' });
+      const response = await fetchWithTimeout(connectorsEndpoint, { cache: 'no-store', timeout: 30000 });
       if (!response.ok) {
         throw new Error('Failed to fetch connectors');
       }
@@ -107,8 +108,8 @@ export default function Home() {
         names.map(async (name) => {
           try {
             const [statusRes, configRes] = await Promise.all([
-              fetch(`${connectorsEndpoint}/${encodeURIComponent(name)}/status`, { cache: 'no-store' }),
-              fetch(`${connectorsEndpoint}/${encodeURIComponent(name)}`, { cache: 'no-store' }),
+              fetchWithTimeout(`${connectorsEndpoint}/${encodeURIComponent(name)}/status`, { cache: 'no-store', timeout: 15000 }),
+              fetchWithTimeout(`${connectorsEndpoint}/${encodeURIComponent(name)}`, { cache: 'no-store', timeout: 15000 }),
             ]);
 
             if (!statusRes.ok || !configRes.ok) {

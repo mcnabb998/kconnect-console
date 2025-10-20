@@ -66,15 +66,32 @@ class KafkaConnectApiError extends Error {
   }
 }
 
+// Default timeout for API requests (30 seconds)
+const DEFAULT_TIMEOUT_MS = 30000;
+
+/**
+ * Create an AbortController that times out after specified milliseconds
+ */
+function createTimeoutController(timeoutMs: number): AbortController {
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), timeoutMs);
+  return controller;
+}
+
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${PROXY}/api/${CLUSTER}${endpoint}`;
-  
+
+  // Set up timeout unless one is already provided
+  const timeoutMs = DEFAULT_TIMEOUT_MS;
+  const controller = options.signal ? undefined : createTimeoutController(timeoutMs);
+
   try {
     const response = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
+      signal: controller?.signal,
       ...options,
     });
 
@@ -107,6 +124,12 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
     if (error instanceof KafkaConnectApiError) {
       throw error;
     }
+
+    // Handle timeout errors
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Request timeout: The request to ${endpoint} took longer than ${timeoutMs}ms`);
+    }
+
     throw new Error(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
