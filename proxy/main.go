@@ -1050,17 +1050,29 @@ func main() {
 
 	// CORS configuration
 	// In production, set ALLOWED_ORIGINS environment variable to specific domains
-	// e.g., ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
+	// Supports comma-separated list: ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com,https://staging.yourdomain.com
 	origins := []string{"*"}
-	if allowedOrigins != "*" {
-		origins = []string{allowedOrigins}
+	if allowedOrigins != "*" && allowedOrigins != "" {
+		// Split by comma and trim whitespace from each origin
+		originList := strings.Split(allowedOrigins, ",")
+		origins = make([]string, 0, len(originList))
+		for _, origin := range originList {
+			trimmed := strings.TrimSpace(origin)
+			if trimmed != "" {
+				origins = append(origins, trimmed)
+			}
+		}
+		// If parsing resulted in empty list, fallback to wildcard for safety
+		if len(origins) == 0 {
+			origins = []string{"*"}
+		}
 	}
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   origins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"*"},
-		AllowCredentials: allowedOrigins != "*", // Only allow credentials if origins are restricted
+		AllowCredentials: allowedOrigins != "*" && allowedOrigins != "", // Only allow credentials if origins are restricted
 	})
 
 	handler := c.Handler(router)
