@@ -9,6 +9,7 @@ import { SkeletonCard, SkeletonLine, SkeletonSurface } from '@/components/Skelet
 import { performConnectorAction, type ConnectorAction } from '@/lib/api';
 import { buildApiUrl, API_CONFIG } from '@/lib/config';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+import { batchFetchSettled } from '@/lib/batchFetch';
 
 const CLUSTER_ID = API_CONFIG.clusterId;
 const ITEMS_PER_PAGE = 20;
@@ -90,6 +91,7 @@ function ConnectorListPage() {
 
   const [connectors, setConnectors] = useState<ConnectorDetails[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState<{ current: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -107,6 +109,8 @@ function ConnectorListPage() {
     try {
       setLoading(true);
       setError(null);
+      setLoadingProgress(null);
+
       const response = await fetchWithTimeout(connectorsEndpoint, { cache: 'no-store', timeout: 30000 });
       if (!response.ok) {
         throw new Error('Failed to fetch connectors');
@@ -114,65 +118,91 @@ function ConnectorListPage() {
       const data = await response.json();
       const names: string[] = Array.isArray(data) ? data : [];
 
-      const detailedConnectors = await Promise.all(
-        names.map(async (name) => {
-          try {
-            const [statusRes, configRes] = await Promise.all([
-              fetchWithTimeout(`${connectorsEndpoint}/${encodeURIComponent(name)}/status`, { cache: 'no-store', timeout: 15000 }),
-              fetchWithTimeout(`${connectorsEndpoint}/${encodeURIComponent(name)}`, { cache: 'no-store', timeout: 15000 }),
-            ]);
+      if (names.length === 0) {
+        setConnectors([]);
+        return;
+      }
 
-            if (!statusRes.ok || !configRes.ok) {
-              throw new Error('Failed to fetch connector details');
-            }
+      // Fetch connector details with concurrency limiting (max 10 concurrent)
+      const { successes, failures } = await batchFetchSettled(
+        names,
+        async (name) => {
+          const [statusRes, configRes] = await Promise.all([
+            fetchWithTimeout(`${connectorsEndpoint}/${encodeURIComponent(name)}/status`, { cache: 'no-store', timeout: 15000 }),
+            fetchWithTimeout(`${connectorsEndpoint}/${encodeURIComponent(name)}`, { cache: 'no-store', timeout: 15000 }),
+          ]);
 
-            const statusData = await statusRes.json();
-            const configData = await configRes.json();
-
-            const tasks: ConnectorTaskStatus[] = Array.isArray(statusData?.tasks) ? statusData.tasks : [];
-            const runningTasks = tasks.filter((task) => normalizeState(task.state) === 'running').length;
-            const failedTasks = tasks.filter((task) => normalizeState(task.state) === 'failed').length;
-
-            const plugin =
-              (configData?.config?.['connector.class'] as string | undefined) ||
-              (configData?.type as string | undefined) ||
-              '—';
-
-            return {
-              name,
-              state: statusData?.connector?.state ?? 'UNKNOWN',
-              tasks: {
-                total: tasks.length,
-                running: runningTasks,
-                failed: failedTasks,
-              },
-              plugin,
-              topics: extractTopics(configData?.config),
-              updated: statusData?.connector?.worker_id ?? null,
-            } satisfies ConnectorDetails;
-          } catch (innerError) {
-            console.error(innerError);
-            return {
-              name,
-              state: 'UNKNOWN',
-              tasks: {
-                total: 0,
-                running: 0,
-                failed: 0,
-              },
-              plugin: '—',
-              topics: '—',
-              updated: null,
-            } satisfies ConnectorDetails;
+          if (!statusRes.ok || !configRes.ok) {
+            throw new Error('Failed to fetch connector details');
           }
-        })
+
+          const statusData = await statusRes.json();
+          const configData = await configRes.json();
+
+          const tasks: ConnectorTaskStatus[] = Array.isArray(statusData?.tasks) ? statusData.tasks : [];
+          const runningTasks = tasks.filter((task) => normalizeState(task.state) === 'running').length;
+          const failedTasks = tasks.filter((task) => normalizeState(task.state) === 'failed').length;
+
+          const plugin =
+            (configData?.config?.['connector.class'] as string | undefined) ||
+            (configData?.type as string | undefined) ||
+            '—';
+
+          return {
+            name,
+            state: statusData?.connector?.state ?? 'UNKNOWN',
+            tasks: {
+              total: tasks.length,
+              running: runningTasks,
+              failed: failedTasks,
+            },
+            plugin,
+            topics: extractTopics(configData?.config),
+            updated: statusData?.connector?.worker_id ?? null,
+          } satisfies ConnectorDetails;
+        },
+        {
+          concurrency: 10,
+          onProgress: (current, total) => {
+            setLoadingProgress({ current, total });
+          },
+        }
       );
+
+      // Combine successes and failures, with fallback data for failures
+      const detailedConnectors: ConnectorDetails[] = names.map((name, index) => {
+        const success = successes.find(s => s.index === index);
+        if (success) {
+          return success.result;
+        }
+
+        // Find failure and log it
+        const failure = failures.find(f => f.index === index);
+        if (failure) {
+          console.error(`Failed to fetch connector "${name}":`, failure.error);
+        }
+
+        // Return fallback data
+        return {
+          name,
+          state: 'UNKNOWN',
+          tasks: {
+            total: 0,
+            running: 0,
+            failed: 0,
+          },
+          plugin: '—',
+          topics: '—',
+          updated: null,
+        } satisfies ConnectorDetails;
+      });
 
       setConnectors(detailedConnectors);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
+      setLoadingProgress(null);
     }
   }, []);
 
@@ -437,7 +467,11 @@ function ConnectorListPage() {
               className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-4 border-emerald-100 border-t-emerald-500"
               aria-hidden
             />
-            <p className="text-sm text-slate-600">Loading connectors…</p>
+            <p className="text-sm text-slate-600">
+              {loadingProgress
+                ? `Loading connectors ${loadingProgress.current}/${loadingProgress.total}…`
+                : 'Loading connectors…'}
+            </p>
           </div>
         </div>
       )}
