@@ -783,13 +783,65 @@ func clusterActionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// healthHandler returns the health status
+// healthHandler returns the health status of the proxy and its dependencies
 func healthHandler(w http.ResponseWriter, r *http.Request) {
+	// Create context with timeout for health check
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	// Check if Kafka Connect is reachable
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimSuffix(connectURL, "/"), nil)
+	if err != nil {
+		respondUnhealthy(w, "Failed to create health check request", err)
+		return
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		respondUnhealthy(w, "Kafka Connect unreachable", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respondUnhealthy(w, fmt.Sprintf("Kafka Connect returned HTTP %d", resp.StatusCode), nil)
+		return
+	}
+
+	// All checks passed - return healthy status
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"status": "healthy",
-	})
+		"kafka_connect": map[string]string{
+			"url":    connectURL,
+			"status": "reachable",
+		},
+	}); err != nil {
+		log.Printf("failed to encode health response: %v", err)
+	}
+}
+
+// respondUnhealthy writes an unhealthy status response
+func respondUnhealthy(w http.ResponseWriter, reason string, err error) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusServiceUnavailable)
+
+	payload := map[string]interface{}{
+		"status": "unhealthy",
+		"reason": reason,
+		"kafka_connect": map[string]string{
+			"url":    connectURL,
+			"status": "unreachable",
+		},
+	}
+	if err != nil {
+		payload["error"] = err.Error()
+	}
+
+	if encodeErr := json.NewEncoder(w).Encode(payload); encodeErr != nil {
+		log.Printf("failed to encode unhealthy response: %v", encodeErr)
+	}
 }
 
 func monitoringSummaryHandler(w http.ResponseWriter, r *http.Request) {

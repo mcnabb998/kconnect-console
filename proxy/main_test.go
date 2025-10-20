@@ -99,27 +99,84 @@ func TestRedactSensitiveData(t *testing.T) {
 }
 
 func TestHealthHandler(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/health", nil)
-	rr := httptest.NewRecorder()
+	t.Run("healthy when Kafka Connect is reachable", func(t *testing.T) {
+		// Mock Kafka Connect server
+		connectServer := testutils.NewConnectServer(map[string]testutils.Response{
+			"GET /": {
+				Status:  http.StatusOK,
+				Body:    map[string]string{"version": "7.5.0", "commit": "abc123"},
+				Headers: map[string]string{"Content-Type": "application/json"},
+			},
+		})
+		defer connectServer.Close()
 
-	healthHandler(rr, req)
+		originalURL := connectURL
+		connectURL = connectServer.URL()
+		t.Cleanup(func() {
+			connectURL = originalURL
+		})
 
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected status 200, got %d", rr.Code)
-	}
+		req := httptest.NewRequest(http.MethodGet, "/health", nil)
+		rr := httptest.NewRecorder()
 
-	if contentType := rr.Header().Get("Content-Type"); contentType != "application/json" {
-		t.Fatalf("expected application/json content type, got %s", contentType)
-	}
+		healthHandler(rr, req)
 
-	var payload map[string]string
-	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
-	}
+		if rr.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d", rr.Code)
+		}
 
-	if payload["status"] != "healthy" {
-		t.Fatalf("expected health status healthy, got %s", payload["status"])
-	}
+		if contentType := rr.Header().Get("Content-Type"); contentType != "application/json" {
+			t.Fatalf("expected application/json content type, got %s", contentType)
+		}
+
+		var payload map[string]interface{}
+		if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		if payload["status"] != "healthy" {
+			t.Fatalf("expected health status healthy, got %v", payload["status"])
+		}
+
+		kafkaConnect, ok := payload["kafka_connect"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("expected kafka_connect field in response")
+		}
+
+		if kafkaConnect["status"] != "reachable" {
+			t.Fatalf("expected kafka_connect status reachable, got %v", kafkaConnect["status"])
+		}
+	})
+
+	t.Run("unhealthy when Kafka Connect is unreachable", func(t *testing.T) {
+		originalURL := connectURL
+		connectURL = "http://localhost:1" // Invalid port - will fail to connect
+		t.Cleanup(func() {
+			connectURL = originalURL
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/health", nil)
+		rr := httptest.NewRecorder()
+
+		healthHandler(rr, req)
+
+		if rr.Code != http.StatusServiceUnavailable {
+			t.Fatalf("expected status 503, got %d", rr.Code)
+		}
+
+		var payload map[string]interface{}
+		if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		if payload["status"] != "unhealthy" {
+			t.Fatalf("expected health status unhealthy, got %v", payload["status"])
+		}
+
+		if payload["reason"] == nil {
+			t.Fatalf("expected reason field in unhealthy response")
+		}
+	})
 }
 
 func TestProxyHandler_ForwardsRequestsAndRedacts(t *testing.T) {
