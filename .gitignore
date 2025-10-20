@@ -140,3 +140,4 @@ vite.config.ts.timestamp-*
 
 # Go binaries
 proxy/proxy
+.claude/

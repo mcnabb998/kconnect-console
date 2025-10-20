@@ -107,12 +107,12 @@ export const connectorTemplates: ConnectorTemplate[] = [
     id: 'salesforce-source',
     name: 'Salesforce Source',
     description: 'Stream changes from Salesforce objects to Kafka topics',
-    connectorClass: 'com.salesforce.kafka.connect.SalesforceSourceConnector',
+    connectorClass: 'io.confluent.salesforce.SalesforceSourceConnector',
     type: 'source',
     category: 'other',
     icon: '⚡',
     defaultConfig: {
-      'connector.class': 'com.salesforce.kafka.connect.SalesforceSourceConnector',
+      'connector.class': 'io.confluent.salesforce.SalesforceSourceConnector',
       'tasks.max': '1',
       'salesforce.username': '',
       'salesforce.password': '',
@@ -124,7 +124,7 @@ export const connectorTemplates: ConnectorTemplate[] = [
       'connection.timeout': '30000'
     },
     requiredFields: ['salesforce.username', 'salesforce.password', 'salesforce.consumer.key', 'salesforce.consumer.secret', 'salesforce.object'],
-    documentation: 'https://github.com/salesforce/kafka-connect-salesforce'
+    documentation: 'https://docs.confluent.io/kafka-connectors/salesforce/current/'
   },
   {
     id: 'eventbridge-sink',
@@ -138,13 +138,15 @@ export const connectorTemplates: ConnectorTemplate[] = [
       'connector.class': 'software.amazon.event.kafkaconnector.EventBridgeSinkConnector',
       'tasks.max': '1',
       'topics': '',
-      'aws.eventbridge.eventbus.name': 'default',
+      'aws.eventbridge.connector.id': '',
+      'aws.eventbridge.eventbus.arn': '',
       'aws.eventbridge.region': 'us-east-1',
-      'aws.eventbridge.detail.types': 'Kafka Connect Event',
-      'aws.eventbridge.sources': 'kafka.connect'
+      'aws.eventbridge.detail.types': 'kafka-connect-${topic}',
+      'aws.eventbridge.retries.max': '2',
+      'aws.eventbridge.retries.delay': '200'
     },
-    requiredFields: ['topics', 'aws.eventbridge.region'],
-    documentation: 'https://github.com/awslabs/eventbridge-kafka-connector'
+    requiredFields: ['aws.eventbridge.connector.id', 'topics', 'aws.eventbridge.eventbus.arn', 'aws.eventbridge.region'],
+    documentation: 'https://github.com/aws/eventbridge-kafka-connector'
   },
   {
     id: 'datagen-source',
