@@ -140,4 +140,13 @@ vite.config.ts.timestamp-*
 
 # Go binaries
 proxy/proxy
+
+# Claude Code settings (personal)
 .claude/
+
+# Optional dev mode files (uncommitted features)
+compose/docker-compose.dev.yml
+proxy/.air.toml
+proxy/Dockerfile.dev
+web/Dockerfile.dev
+DEV-MODE*.md
