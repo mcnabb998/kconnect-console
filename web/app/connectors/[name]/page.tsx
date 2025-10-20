@@ -7,8 +7,9 @@ import Link from 'next/link';
 import { SkeletonBadge, SkeletonCard, SkeletonLine } from '@/components/Skeleton';
 import TransformationsTab from './TransformationsTab';
 import type { ConnectorGetResponse } from '@/types/connect';
+import { getProxyUrl, API_CONFIG } from '@/lib/config';
 
-const PROXY = process.env.NEXT_PUBLIC_PROXY_URL ?? 'http://localhost:8080';
+const PROXY = getProxyUrl();
 
 interface ConnectorStatus {
   name: string;
@@ -28,7 +29,7 @@ export default function ConnectorDetail() {
   const params = useParams();
   const router = useRouter();
   const name = params?.name as string;
-  const cluster = 'default';
+  const cluster = API_CONFIG.clusterId;
 
   const [status, setStatus] = useState<ConnectorStatus | null>(null);
   const [config, setConfig] = useState<ConnectorGetResponse | null>(null);

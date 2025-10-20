@@ -1,7 +1,8 @@
 import { ConnectorConfig, ConnectorGetResponse, PluginInfo, ValidateResponse } from '@/types/connect';
+import { getProxyUrl, API_CONFIG } from './config';
 
-const BASE = process.env.NEXT_PUBLIC_PROXY_URL ?? 'http://localhost:8080';
-const CLUSTER = 'default';
+const BASE = getProxyUrl();
+const CLUSTER = API_CONFIG.clusterId;
 
 export async function getConnector(name: string): Promise<ConnectorGetResponse> {
   const r = await fetch(`${BASE}/api/${CLUSTER}/connectors/${name}`, { cache: 'no-store' });

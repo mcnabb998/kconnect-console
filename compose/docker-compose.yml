@@ -66,10 +66,35 @@ services:
       - bash
       - -c
       - |
-        echo "Installing Connector"
-        confluent-hub install --no-prompt confluentinc/kafka-connect-datagen:latest
-        echo "Launching Kafka Connect worker"
-        exec /etc/confluent/docker/run
+        /bin/bash -c "
+          echo 'Installing Connectors...'
+          
+          confluent-hub install --no-prompt confluentinc/kafka-connect-datagen:latest
+          confluent-hub install --no-prompt confluentinc/kafka-connect-jdbc:latest
+          confluent-hub install --no-prompt confluentinc/kafka-connect-elasticsearch:latest
+          confluent-hub install --no-prompt confluentinc/kafka-connect-s3:latest
+          confluent-hub install --no-prompt mongodb/kafka-connect-mongodb:latest
+          confluent-hub install --no-prompt confluentinc/kafka-connect-salesforce:latest
+          confluent-hub install --no-prompt debezium/debezium-connector-mysql:latest
+          
+          echo 'Installing AWS EventBridge connector from GitHub...'
+          mkdir -p /usr/share/confluent-hub-components/aws-eventbridge
+          cd /tmp
+          if curl -L -o eventbridge-kafka-connector.zip https://github.com/aws/eventbridge-kafka-connector/releases/download/v1.4.0/eventbridge-kafka-connector-with-dependencies.zip; then
+            if jar -xf eventbridge-kafka-connector.zip; then
+              mv *.jar /usr/share/confluent-hub-components/aws-eventbridge/
+              echo 'EventBridge connector installation complete'
+            else
+              echo 'Failed to extract EventBridge connector'
+            fi
+            rm -f eventbridge-kafka-connector.zip
+          else
+            echo 'Failed to download EventBridge connector'
+          fi
+          
+          echo 'Launching Kafka Connect worker'
+          exec /etc/confluent/docker/run
+        "
     networks:
       - kafka-network
 
@@ -99,7 +124,10 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: production
+      # Browser connects to proxy via localhost (host machine)
       NEXT_PUBLIC_PROXY_URL: http://localhost:8080
+      # Next.js SSR connects to proxy via container network
+      INTERNAL_PROXY_URL: http://kconnect-proxy:8080
       NEXT_PUBLIC_CLUSTER_ID: default
     networks:
       - kafka-network

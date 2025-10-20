@@ -6,9 +6,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConnectorBulkActions } from '@/components/ConnectorBulkActions';
 import { SkeletonCard, SkeletonLine, SkeletonSurface } from '@/components/Skeleton';
 import { performConnectorAction, type ConnectorAction } from '@/lib/api';
+import { buildApiUrl, API_CONFIG } from '@/lib/config';
 
-const PROXY_URL = 'http://localhost:8080';
-const CLUSTER_ID = 'default';
+const CLUSTER_ID = API_CONFIG.clusterId;
 
 interface ConnectorTaskStatus {
   id: number;
@@ -28,7 +28,7 @@ interface ConnectorDetails {
   updated: string | null;
 }
 
-const connectorsEndpoint = `${PROXY_URL}/api/${CLUSTER_ID}/connectors`;
+const connectorsEndpoint = buildApiUrl('/connectors');
 
 const stateStyles: Record<string, string> = {
   running: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',

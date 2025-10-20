@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { SkeletonCard, SkeletonLine } from '@/components/Skeleton';
+import { getProxyUrl, API_CONFIG } from '@/lib/config';
 
-const PROXY = process.env.NEXT_PUBLIC_PROXY_URL ?? 'http://localhost:8080';
-const DEFAULT_CLUSTER = 'default';
+const PROXY = getProxyUrl();
+const DEFAULT_CLUSTER = API_CONFIG.clusterId;
 
 interface ConnectorStatus {
   name: string;

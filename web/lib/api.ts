@@ -1,7 +1,8 @@
 // API utilities for Kafka Connect operations
-// Use the browser's host for client-side requests
-const PROXY = typeof window !== 'undefined' ? 'http://localhost:8080' : 'http://kconnect-proxy:8080';
-const CLUSTER = 'default';
+import { getProxyUrl, API_CONFIG } from './config';
+
+const PROXY = getProxyUrl();
+const CLUSTER = API_CONFIG.clusterId;
 
 export type ConnectorAction = 'pause' | 'resume' | 'restart' | 'delete';
 

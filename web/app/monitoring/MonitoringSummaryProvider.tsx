@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { getProxyUrl, API_CONFIG } from '@/lib/config';
 
 interface MonitoringTotals {
   total: number;
@@ -57,8 +58,8 @@ const MonitoringSummaryContext = createContext<MonitoringSummaryContextValue | u
   undefined,
 );
 
-const DEFAULT_PROXY_URL = process.env.NEXT_PUBLIC_PROXY_URL ?? 'http://localhost:8080';
-const DEFAULT_CLUSTER_ID = process.env.NEXT_PUBLIC_CLUSTER_ID ?? 'default';
+const DEFAULT_PROXY_URL = getProxyUrl();
+const DEFAULT_CLUSTER_ID = API_CONFIG.clusterId;
 const POLLING_INTERVAL_MS = 10_000;
 
 export function MonitoringSummaryProvider({ children }: PropsWithChildren) {
