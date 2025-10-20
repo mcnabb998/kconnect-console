@@ -52,17 +52,21 @@
   - **Impact:** Easier troubleshooting
 
 #### Scalability
-- [ ] **[#7] Pagination for connector list** - 6 hours
+- [x] **[#7] Pagination for connector list** - 6 hours ✅ COMPLETED
   - **File:** `web/app/page.tsx`
   - **Issue:** Fetches ALL connectors (breaks with 100+ connectors)
   - **Fix:** Add pagination with 20 items per page
   - **Impact:** CRITICAL - App freezes with large deployments
+  - **Completed:** 2025-10-20 - Commit 14c2096
+  - **Tests:** 12/12 passing (`__tests__/pagination.test.tsx`)
 
-- [ ] **[#8] Request batching/concurrency limit** - 6 hours
-  - **File:** `web/app/page.tsx` (lines 107-159)
+- [x] **[#8] Request batching/concurrency limit** - 6 hours ✅ COMPLETED
+  - **File:** `web/app/page.tsx`, `web/lib/batchFetch.ts`
   - **Issue:** Fires 200 parallel requests for 100 connectors
-  - **Fix:** Batch requests with max 10 concurrent
+  - **Fix:** Batch requests with max 10 concurrent, show progress
   - **Impact:** Prevents browser/proxy overload
+  - **Completed:** 2025-10-20 - Commit a066e35
+  - **Tests:** 18/18 passing (`__tests__/batchFetch.test.ts`)
 
 ### 🟡 MEDIUM PRIORITY - Next 2-3 Sprints (Major Features)
 
