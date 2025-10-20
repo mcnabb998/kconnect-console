@@ -900,68 +900,121 @@ func summaryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	summary := Summary{}
+	var wg sync.WaitGroup
+
+	// Fetch cluster info, plugins, and workers in parallel
+	wg.Add(3)
 
 	// Fetch cluster info from root endpoint
-	clusterResp, err := http.Get(strings.TrimSuffix(connectURL, "/"))
-	if err == nil {
-		defer clusterResp.Body.Close()
-		if clusterResp.StatusCode == http.StatusOK {
-			body, err := io.ReadAll(clusterResp.Body)
-			if err == nil {
-				var clusterData map[string]interface{}
-				if err := json.Unmarshal(body, &clusterData); err == nil {
-					summary.ClusterInfo = clusterData
+	go func() {
+		defer wg.Done()
+		clusterResp, err := http.Get(strings.TrimSuffix(connectURL, "/"))
+		if err == nil {
+			defer clusterResp.Body.Close()
+			if clusterResp.StatusCode == http.StatusOK {
+				body, err := io.ReadAll(clusterResp.Body)
+				if err == nil {
+					var clusterData map[string]interface{}
+					if err := json.Unmarshal(body, &clusterData); err == nil {
+						summary.ClusterInfo = clusterData
+					}
 				}
 			}
 		}
-	}
+	}()
 
 	// Fetch connector plugins
-	pluginsResp, err := fetchFromKafkaConnect("connector-plugins")
-	if err == nil {
-		var pluginsData []map[string]interface{}
-		if err := json.Unmarshal(pluginsResp, &pluginsData); err == nil {
-			summary.ConnectorPlugins = pluginsData
+	go func() {
+		defer wg.Done()
+		pluginsResp, err := fetchFromKafkaConnect("connector-plugins")
+		if err == nil {
+			var pluginsData []map[string]interface{}
+			if err := json.Unmarshal(pluginsResp, &pluginsData); err == nil {
+				summary.ConnectorPlugins = pluginsData
+			}
 		}
-	}
+	}()
 
-	// Fetch connector stats
+	// Fetch worker info
+	go func() {
+		defer wg.Done()
+		workersResp, err := fetchFromKafkaConnect("workers")
+		if err == nil {
+			var workers []map[string]interface{}
+			if err := json.Unmarshal(workersResp, &workers); err == nil && len(workers) > 0 {
+				summary.WorkerInfo = workers[0]
+			}
+		}
+	}()
+
+	// Wait for initial parallel requests to complete
+	wg.Wait()
+
+	// Fetch connector stats (must be after workers complete to avoid race)
 	connectorsResp, err := fetchFromKafkaConnect("connectors")
 	if err == nil {
 		var connectors []string
 		if err := json.Unmarshal(connectorsResp, &connectors); err == nil {
 			summary.ConnectorStats.Total = len(connectors)
 
-			// Count connector states (simplified for now)
-			for _, connectorName := range connectors {
-				statusResp, err := fetchFromKafkaConnect(fmt.Sprintf("connectors/%s/status", connectorName))
-				if err == nil {
-					var status map[string]interface{}
-					if err := json.Unmarshal(statusResp, &status); err == nil {
-						if connector, ok := status["connector"].(map[string]interface{}); ok {
-							if state, ok := connector["state"].(string); ok {
-								switch strings.ToUpper(state) {
-								case "RUNNING":
-									summary.ConnectorStats.Running++
-								case "FAILED":
-									summary.ConnectorStats.Failed++
-								case "PAUSED":
-									summary.ConnectorStats.Paused++
+			// Fetch connector statuses in parallel with worker pool (limit concurrency)
+			type connectorState struct {
+				state string
+			}
+			states := make(chan connectorState, len(connectors))
+
+			// Use worker pool pattern to limit concurrent requests
+			workerCount := 10
+			if len(connectors) < workerCount {
+				workerCount = len(connectors)
+			}
+
+			connectorChan := make(chan string, len(connectors))
+			for _, name := range connectors {
+				connectorChan <- name
+			}
+			close(connectorChan)
+
+			var statusWg sync.WaitGroup
+			statusWg.Add(workerCount)
+
+			// Start worker goroutines
+			for i := 0; i < workerCount; i++ {
+				go func() {
+					defer statusWg.Done()
+					for connectorName := range connectorChan {
+						statusResp, err := fetchFromKafkaConnect(fmt.Sprintf("connectors/%s/status", connectorName))
+						if err == nil {
+							var status map[string]interface{}
+							if err := json.Unmarshal(statusResp, &status); err == nil {
+								if connector, ok := status["connector"].(map[string]interface{}); ok {
+									if state, ok := connector["state"].(string); ok {
+										states <- connectorState{state: strings.ToUpper(state)}
+									}
 								}
 							}
 						}
 					}
+				}()
+			}
+
+			// Wait for all workers to finish and close states channel
+			go func() {
+				statusWg.Wait()
+				close(states)
+			}()
+
+			// Collect results
+			for state := range states {
+				switch state.state {
+				case "RUNNING":
+					summary.ConnectorStats.Running++
+				case "FAILED":
+					summary.ConnectorStats.Failed++
+				case "PAUSED":
+					summary.ConnectorStats.Paused++
 				}
 			}
-		}
-	}
-
-	// Fetch worker info (first worker for simplicity)
-	workersResp, err := fetchFromKafkaConnect("workers")
-	if err == nil {
-		var workers []map[string]interface{}
-		if err := json.Unmarshal(workersResp, &workers); err == nil && len(workers) > 0 {
-			summary.WorkerInfo = workers[0]
 		}
 	}
 
