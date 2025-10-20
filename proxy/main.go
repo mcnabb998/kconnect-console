@@ -641,38 +641,52 @@ func writeRedactedResponse(w http.ResponseWriter, resp *http.Response) error {
 	return nil
 }
 
-// proxyHandler forwards requests to Kafka Connect and redacts sensitive data
-func proxyHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	_ = vars["cluster"] // cluster variable for future use
-	path := vars["path"]
-
-	// Build the target URL - extract the endpoint from the request path
-	var targetURL string
-	if path == "" {
-		// Extract endpoint from request path (e.g., "/api/default/connectors" -> "connectors")
-		pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-		if len(pathParts) >= 3 {
-			endpoint := pathParts[2] // Should be "connectors" or "connector-plugins"
-			targetURL = fmt.Sprintf("%s/%s", connectURL, endpoint)
-		} else {
-			targetURL = fmt.Sprintf("%s/connectors", connectURL) // fallback
-		}
-	} else {
-		// For paths like "datagen-users" or "datagen-users/status", we need to determine the base endpoint
-		pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-		if len(pathParts) >= 3 {
-			endpoint := pathParts[2] // Should be "connectors" or "connector-plugins"
-			targetURL = fmt.Sprintf("%s/%s/%s", connectURL, endpoint, path)
-		} else {
-			targetURL = fmt.Sprintf("%s/connectors/%s", connectURL, path) // fallback
-		}
+// buildProxyURL constructs the target Kafka Connect URL from the incoming request
+func buildProxyURL(r *http.Request) (*url.URL, error) {
+	// Parse the base Kafka Connect URL
+	baseURL, err := url.Parse(connectURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid connect URL: %w", err)
 	}
 
-	log.Printf("Proxying %s %s to %s", r.Method, r.URL.Path, targetURL)
+	// Build the target path by extracting everything after /api/{cluster}/
+	// Example: /api/default/connectors/my-connector/status -> /connectors/my-connector/status
+	requestPath := strings.TrimPrefix(r.URL.Path, "/")
+	pathParts := strings.SplitN(requestPath, "/", 3) // Split into: ["api", "cluster", "rest/of/path"]
+
+	var targetPath string
+	if len(pathParts) >= 3 && pathParts[2] != "" {
+		// Use everything after /api/{cluster}/
+		targetPath = "/" + pathParts[2]
+	} else {
+		// Fallback for malformed requests
+		targetPath = "/connectors"
+	}
+
+	// Combine base URL path with target path, handling trailing slashes properly
+	basePath := strings.TrimSuffix(baseURL.Path, "/")
+	baseURL.Path = basePath + targetPath
+
+	// Preserve query parameters from original request
+	baseURL.RawQuery = r.URL.RawQuery
+
+	return baseURL, nil
+}
+
+// proxyHandler forwards requests to Kafka Connect and redacts sensitive data
+func proxyHandler(w http.ResponseWriter, r *http.Request) {
+	// Build target URL using proper URL parsing
+	targetURL, err := buildProxyURL(r)
+	if err != nil {
+		http.Error(w, "Invalid proxy URL", http.StatusInternalServerError)
+		log.Printf("Error building proxy URL for %s: %v", r.URL.Path, err)
+		return
+	}
+
+	log.Printf("Proxying %s %s to %s", r.Method, r.URL.Path, targetURL.String())
 
 	// Create the proxy request
-	proxyReq, err := http.NewRequestWithContext(r.Context(), r.Method, targetURL, r.Body)
+	proxyReq, err := http.NewRequestWithContext(r.Context(), r.Method, targetURL.String(), r.Body)
 	if err != nil {
 		http.Error(w, "Failed to create proxy request", http.StatusInternalServerError)
 		log.Printf("Error creating proxy request: %v", err)
