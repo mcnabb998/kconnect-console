@@ -39,6 +39,7 @@ var (
 		data      MonitoringSummary
 		expiresAt time.Time
 		valid     bool
+		fetching  bool // Prevents thundering herd
 	}{}
 )
 
@@ -529,24 +530,51 @@ func fetchMonitoringSummary(ctx context.Context, client *http.Client, baseURL st
 func getMonitoringSummary(ctx context.Context) (MonitoringSummary, error) {
 	now := time.Now()
 
+	// Fast path: return cached data if still valid
 	monitoringSummaryCache.Lock()
 	if monitoringSummaryCache.valid && now.Before(monitoringSummaryCache.expiresAt) {
 		summary := monitoringSummaryCache.data
 		monitoringSummaryCache.Unlock()
 		return summary, nil
 	}
+
+	// Cache is expired or invalid - check if someone is already fetching
+	if monitoringSummaryCache.fetching {
+		// Another goroutine is fetching, wait and return stale data or wait for fresh data
+		// Return stale data if available to prevent blocking
+		if monitoringSummaryCache.valid {
+			summary := monitoringSummaryCache.data
+			monitoringSummaryCache.Unlock()
+			return summary, nil
+		}
+		// No stale data available, unlock and wait briefly then retry
+		monitoringSummaryCache.Unlock()
+		time.Sleep(100 * time.Millisecond)
+		return getMonitoringSummary(ctx) // Retry
+	}
+
+	// Mark that we're fetching to prevent thundering herd
+	monitoringSummaryCache.fetching = true
 	monitoringSummaryCache.Unlock()
 
+	// Fetch new data
 	summary, err := fetchMonitoringSummary(ctx, monitoringHTTPClient, connectURL)
+
+	// Update cache regardless of success/failure
+	monitoringSummaryCache.Lock()
+	monitoringSummaryCache.fetching = false
+	if err == nil {
+		monitoringSummaryCache.data = summary
+		monitoringSummaryCache.expiresAt = time.Now().Add(summaryCacheTTL)
+		monitoringSummaryCache.valid = true
+	}
+	// If fetch failed but we have old data, keep it valid for graceful degradation
+	// (expiresAt stays in the past, but valid=true allows stale reads)
+	monitoringSummaryCache.Unlock()
+
 	if err != nil {
 		return MonitoringSummary{}, err
 	}
-
-	monitoringSummaryCache.Lock()
-	monitoringSummaryCache.data = summary
-	monitoringSummaryCache.expiresAt = time.Now().Add(summaryCacheTTL)
-	monitoringSummaryCache.valid = true
-	monitoringSummaryCache.Unlock()
 
 	return summary, nil
 }
