@@ -11,5 +11,6 @@ jest.mock('next/link', () => {
 
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
-  useParams: jest.fn()
+  useParams: jest.fn(),
+  useSearchParams: jest.fn()
 }));

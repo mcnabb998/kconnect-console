@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 import { ConnectorBulkActions } from '@/components/ConnectorBulkActions';
 import { SkeletonCard, SkeletonLine, SkeletonSurface } from '@/components/Skeleton';
@@ -10,6 +11,7 @@ import { buildApiUrl, API_CONFIG } from '@/lib/config';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 const CLUSTER_ID = API_CONFIG.clusterId;
+const ITEMS_PER_PAGE = 20;
 
 interface ConnectorTaskStatus {
   id: number;
@@ -82,7 +84,10 @@ const formatTasks = (tasks: ConnectorDetails['tasks']) => {
   return segments.join(' • ');
 };
 
-export default function Home() {
+function ConnectorListPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [connectors, setConnectors] = useState<ConnectorDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +96,12 @@ export default function Home() {
   const [searchTerm, setSearchTerm] = useState('');
   const [stateFilter, setStateFilter] = useState('all');
   const [selectedConnectors, setSelectedConnectors] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(() => {
+    const page = searchParams.get('page');
+    return page ? Math.max(1, parseInt(page, 10)) : 1;
+  });
   const selectAllRef = useRef<HTMLInputElement>(null);
+  const prevFiltersRef = useRef({ searchTerm: '', stateFilter: 'all' });
 
   const fetchConnectors = useCallback(async () => {
     try {
@@ -217,6 +227,42 @@ export default function Home() {
       return matchesSearch && matchesState;
     });
   }, [connectors, searchTerm, stateFilter]);
+
+  // Reset to page 1 when filters change (but not on initial mount)
+  useEffect(() => {
+    const prev = prevFiltersRef.current;
+    const searchChanged = prev.searchTerm !== searchTerm;
+    const filterChanged = prev.stateFilter !== stateFilter;
+
+    if (searchChanged || filterChanged) {
+      // Only reset if this isn't the initial mount (both prev values at defaults)
+      const isInitialMount = prev.searchTerm === '' && prev.stateFilter === 'all' && searchTerm === '' && stateFilter === 'all';
+      if (!isInitialMount) {
+        setCurrentPage(1);
+      }
+      prevFiltersRef.current = { searchTerm, stateFilter };
+    }
+  }, [searchTerm, stateFilter]);
+
+  // Sync page number to URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (currentPage === 1) {
+      params.delete('page');
+    } else {
+      params.set('page', currentPage.toString());
+    }
+    const newUrl = params.toString() ? `?${params.toString()}` : '/';
+    router.replace(newUrl, { scroll: false });
+  }, [currentPage, router, searchParams]);
+
+  // Calculate pagination
+  const totalPages = Math.max(1, Math.ceil(filteredConnectors.length / ITEMS_PER_PAGE));
+  const paginatedConnectors = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredConnectors.slice(startIndex, endIndex);
+  }, [filteredConnectors, currentPage]);
 
   const selectedConnectorNames = useMemo(() => Array.from(selectedConnectors), [selectedConnectors]);
   const selectedCount = selectedConnectorNames.length;
@@ -490,7 +536,7 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
-                {filteredConnectors.map((connector) => {
+                {paginatedConnectors.map((connector) => {
                   const normalizedState = normalizeState(connector.state);
                   const badgeClass = stateStyles[normalizedState] ?? 'bg-slate-100 text-slate-600 ring-slate-500/20';
 
@@ -577,6 +623,100 @@ export default function Home() {
           )}
         </div>
       )}
+
+      {!loading && !error && filteredConnectors.length > ITEMS_PER_PAGE && (
+        <div className="mt-6 flex items-center justify-between border-t border-slate-200 bg-white px-4 py-4 sm:px-6">
+          <div className="flex flex-1 justify-between sm:hidden">
+            <button
+              type="button"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+          <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-slate-700">
+                Showing page <span className="font-medium">{currentPage}</span> of{' '}
+                <span className="font-medium">{totalPages}</span>
+                {' '}({filteredConnectors.length} total connectors)
+              </p>
+            </div>
+            <div>
+              <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center rounded-l-md border border-slate-300 bg-white px-2 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 focus:z-20 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <span className="sr-only">Previous</span>
+                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+                  </svg>
+                </button>
+                <span className="relative inline-flex items-center border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="relative inline-flex items-center rounded-r-md border border-slate-300 bg-white px-2 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 focus:z-20 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <span className="sr-only">Next</span>
+                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="space-y-6" role="status" aria-live="polite">
+          <span className="sr-only">Loading connectors…</span>
+          <SkeletonCard>
+            <div className="space-y-4">
+              <SkeletonLine width="w-1/3" height="h-4" />
+              <div className="grid gap-3 sm:grid-cols-3">
+                <SkeletonLine height="h-9" rounded="rounded-pill" />
+                <SkeletonLine height="h-9" rounded="rounded-pill" />
+                <SkeletonLine height="h-9" rounded="rounded-pill" />
+              </div>
+            </div>
+          </SkeletonCard>
+          <SkeletonSurface className="overflow-hidden p-0">
+            <ul className="divide-y divide-gray-200/70 dark:divide-gray-700/60">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <li key={index} className="px-4 py-4 sm:px-6">
+                  <SkeletonLine width="w-1/2" height="h-5" />
+                </li>
+              ))}
+            </ul>
+          </SkeletonSurface>
+        </div>
+      </section>
+    }>
+      <ConnectorListPage />
+    </Suspense>
   );
 }
