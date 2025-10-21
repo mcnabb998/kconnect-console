@@ -273,7 +273,7 @@ export default function ConnectorDetail() {
               <div className="flex flex-wrap gap-2">
                 <LoadingButton
                   onClick={() => handleAction('pause')}
-                  disabled={status?.connector.state === 'PAUSED'}
+                  disabled={status?.connector.state === 'PAUSED' || actionLoading !== null}
                   loading={actionLoading === 'pause'}
                   loadingText="Pausing..."
                   className="bg-yellow-500 hover:bg-yellow-700 focus-visible:outline-yellow-500"
@@ -282,7 +282,7 @@ export default function ConnectorDetail() {
                 </LoadingButton>
                 <LoadingButton
                   onClick={() => handleAction('resume')}
-                  disabled={status?.connector.state !== 'PAUSED'}
+                  disabled={status?.connector.state !== 'PAUSED' || actionLoading !== null}
                   loading={actionLoading === 'resume'}
                   loadingText="Resuming..."
                   className="bg-green-500 hover:bg-green-700 focus-visible:outline-green-500"
@@ -291,6 +291,7 @@ export default function ConnectorDetail() {
                 </LoadingButton>
                 <LoadingButton
                   onClick={() => handleAction('restart')}
+                  disabled={actionLoading !== null}
                   loading={actionLoading === 'restart'}
                   loadingText="Restarting..."
                   className="bg-blue-500 hover:bg-blue-700 focus-visible:outline-blue-500"
@@ -299,6 +300,7 @@ export default function ConnectorDetail() {
                 </LoadingButton>
                 <LoadingButton
                   onClick={handleDelete}
+                  disabled={actionLoading !== null}
                   loading={actionLoading === 'delete'}
                   loadingText="Deleting..."
                   variant="danger"

@@ -302,4 +302,41 @@ describe('ConnectorDetail page', () => {
 
     confirmSpy.mockRestore();
   });
+
+  it('disables all action buttons when any action is in progress', async () => {
+    jest.useFakeTimers();
+    queueSuccessfulFetch();
+
+    render(<ConnectorDetail />);
+
+    await screen.findByText('Connector State');
+
+    // Mock a slow pause action that won't complete immediately
+    fetchMock.mockImplementation(() => new Promise(() => {}));
+
+    const pauseButton = screen.getByRole('button', { name: 'Pause' });
+    const restartButton = screen.getByRole('button', { name: 'Restart' });
+    const deleteButton = screen.getByRole('button', { name: 'Delete' });
+    const resumeButton = screen.getByRole('button', { name: 'Resume' });
+
+    // Initially, only Resume should be disabled (connector is RUNNING)
+    expect(pauseButton).not.toBeDisabled();
+    expect(restartButton).not.toBeDisabled();
+    expect(deleteButton).not.toBeDisabled();
+    expect(resumeButton).toBeDisabled();
+
+    // Click pause - should disable all buttons
+    fireEvent.click(pauseButton);
+
+    // Wait for the loading state to be applied
+    await waitFor(() => {
+      expect(screen.getByText('Pausing...')).toBeInTheDocument();
+    });
+
+    // All buttons should now be disabled while pause is in progress
+    expect(pauseButton).toBeDisabled();
+    expect(resumeButton).toBeDisabled();
+    expect(restartButton).toBeDisabled();
+    expect(deleteButton).toBeDisabled();
+  });
 });
