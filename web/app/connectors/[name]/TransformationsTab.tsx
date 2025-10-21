@@ -10,6 +10,7 @@ import type {
   SMTItem,
   ValidateResponse,
 } from '@/types/connect';
+import { LoadingButton } from '@/components/LoadingButton';
 import TransformEditor from '@/components/smts/TransformEditor';
 import TransformList from '@/components/smts/TransformList';
 import PreviewPanel from '@/components/smts/PreviewPanel';
@@ -457,8 +458,8 @@ export default function TransformationsTab({
           Changes are applied to the connector configuration. Validation must succeed before saving.
         </p>
         <div className="flex items-center gap-3">
-          <button
-            className="rounded-full border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
+          <LoadingButton
+            variant="secondary"
             onClick={() => {
               if (!connector) return;
               const resetItems = parseFromConnectorConfig(connector.config);
@@ -467,19 +468,20 @@ export default function TransformationsTab({
               setSelectedAlias(resetItems[0]?.alias ?? null);
               setStatusMessage('Changes discarded.');
             }}
-            type="button"
             disabled={saving}
+            className="rounded-full"
           >
             Reset
-          </button>
-          <button
-            className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
-            type="button"
+          </LoadingButton>
+          <LoadingButton
+            variant="primary"
             onClick={handleSave}
-            disabled={saving}
+            loading={saving}
+            loadingText="Saving..."
+            className="rounded-full"
           >
             Save Changes
-          </button>
+          </LoadingButton>
         </div>
       </div>
 

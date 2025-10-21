@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { LoadingButton } from '@/components/LoadingButton';
 import { SkeletonBadge, SkeletonCard, SkeletonLine, SkeletonTableRow } from '@/components/Skeleton';
 import { getProxyUrl, API_CONFIG } from '@/lib/config';
 
@@ -571,13 +572,15 @@ export default function ClusterPage() {
             >
               Restart all connectors (unavailable)
             </button>
-            <button
-              type="button"
+            <LoadingButton
+              variant="ghost"
               onClick={() => refresh()}
-              className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              loading={loading}
+              loadingText="Refreshing..."
+              className="rounded-full border border-gray-200"
             >
               Refresh
-            </button>
+            </LoadingButton>
           </div>
         </div>
       </header>
