@@ -8,6 +8,8 @@ interface ConnectorBulkActionsProps {
   selected: string[];
   onClearSelection: () => void;
   onActionComplete?: () => void | Promise<void>;
+  onSuccess?: (message: string) => void;
+  onError?: (message: string) => void;
 }
 
 interface BulkSummary {
@@ -40,7 +42,13 @@ const actionPastTense: Record<ConnectorAction, string> = {
 
 const actionOrder: ConnectorAction[] = ['pause', 'resume', 'restart', 'delete'];
 
-export function ConnectorBulkActions({ selected, onClearSelection, onActionComplete }: ConnectorBulkActionsProps) {
+export function ConnectorBulkActions({
+  selected,
+  onClearSelection,
+  onActionComplete,
+  onSuccess,
+  onError: onErrorCallback
+}: ConnectorBulkActionsProps) {
   const [activeAction, setActiveAction] = useState<ConnectorAction | null>(null);
   const [summary, setSummary] = useState<BulkSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,11 +76,25 @@ export function ConnectorBulkActions({ selected, onClearSelection, onActionCompl
 
       await onActionComplete?.();
 
+      // Show success toast
       if (result.failures.length === 0) {
+        const count = result.successes.length;
+        const connectorWord = count === 1 ? 'connector' : 'connectors';
+        onSuccess?.(`${count} ${connectorWord} ${action}d successfully`);
         onClearSelection();
+      } else if (result.successes.length > 0) {
+        // Partial success
+        const successCount = result.successes.length;
+        const failCount = result.failures.length;
+        onSuccess?.(`${successCount} succeeded, ${failCount} failed`);
+      } else {
+        // All failed
+        onErrorCallback?.(`Failed to ${action} ${selectedCount} connector${selectedCount === 1 ? '' : 's'}`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to run bulk action');
+      const errorMessage = err instanceof Error ? err.message : 'Unable to run bulk action';
+      setError(errorMessage);
+      onErrorCallback?.(errorMessage);
     } finally {
       setActiveAction(null);
     }

@@ -6,10 +6,12 @@ import { useSearchParams, useRouter } from 'next/navigation';
 
 import { ConnectorBulkActions } from '@/components/ConnectorBulkActions';
 import { SkeletonCard, SkeletonLine, SkeletonSurface } from '@/components/Skeleton';
+import { ToastContainer } from '@/components/ToastContainer';
 import { performConnectorAction, type ConnectorAction } from '@/lib/api';
 import { buildApiUrl, API_CONFIG } from '@/lib/config';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import { batchFetchSettled } from '@/lib/batchFetch';
+import { useToast } from '@/hooks/useToast';
 
 const CLUSTER_ID = API_CONFIG.clusterId;
 const ITEMS_PER_PAGE = 20;
@@ -88,6 +90,7 @@ const formatTasks = (tasks: ConnectorDetails['tasks']) => {
 function ConnectorListPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { toasts, success, error: showErrorToast, dismissToast } = useToast();
 
   const [connectors, setConnectors] = useState<ConnectorDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -217,13 +220,19 @@ function ConnectorListPage() {
         setActionLoading(`${name}-${action}`);
         await performConnectorAction(name, action);
         await fetchConnectors();
+
+        // Show success toast
+        const actionLabel = action.charAt(0).toUpperCase() + action.slice(1);
+        success(`Connector ${action}d successfully`);
       } catch (err) {
-        setActionError(err instanceof Error ? err.message : 'An error occurred while performing the action');
+        const errorMessage = err instanceof Error ? err.message : 'An error occurred while performing the action';
+        setActionError(errorMessage);
+        showErrorToast(errorMessage);
       } finally {
         setActionLoading(null);
       }
     },
-    [fetchConnectors]
+    [fetchConnectors, success, showErrorToast]
   );
 
   useEffect(() => {
@@ -417,8 +426,10 @@ function ConnectorListPage() {
   }, [filteredConnectorNames, filteredSelectedCount]);
 
   return (
-    <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <div className="flex flex-col gap-4 border-b border-gray-200 pb-6">
+    <>
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-4 border-b border-gray-200 pb-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-3">
@@ -510,6 +521,8 @@ function ConnectorListPage() {
             selected={selectedConnectorNames}
             onClearSelection={clearSelection}
             onActionComplete={fetchConnectors}
+            onSuccess={success}
+            onError={showErrorToast}
           />
         )}
       </div>
@@ -793,7 +806,8 @@ function ConnectorListPage() {
           </div>
         </div>
       )}
-    </section>
+      </section>
+    </>
   );
 }
 
