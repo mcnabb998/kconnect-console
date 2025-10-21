@@ -54,7 +54,7 @@ export default function HealthPage() {
     const checkStart = Date.now();
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/health`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_PROXY_URL}/health`);
       const data = await response.json();
       const latency = Date.now() - checkStart;
 
@@ -241,8 +241,8 @@ export default function HealthPage() {
 
           <dl className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
-              <dt className="font-semibold text-gray-700">API URL</dt>
-              <dd className="text-gray-600 mt-1">{process.env.NEXT_PUBLIC_API_URL || 'Not configured'}</dd>
+              <dt className="font-semibold text-gray-700">Proxy URL</dt>
+              <dd className="text-gray-600 mt-1">{process.env.NEXT_PUBLIC_PROXY_URL || 'Not configured'}</dd>
             </div>
             <div>
               <dt className="font-semibold text-gray-700">Cluster ID</dt>
