@@ -15,6 +15,7 @@ export function ThemeToggle() {
   // Initialize theme from localStorage or system preference
   useEffect(() => {
     setMounted(true);
+    // eslint-disable-next-line no-undef
     const storedTheme = localStorage.getItem('theme') as Theme | null;
     if (storedTheme) {
       setTheme(storedTheme);
@@ -39,6 +40,7 @@ export function ThemeToggle() {
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
+    // eslint-disable-next-line no-undef
     localStorage.setItem('theme', newTheme);
     applyTheme(newTheme);
   };
