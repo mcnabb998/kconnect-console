@@ -1,0 +1,19 @@
+apiVersion: v2
+name: kconnect-console
+description: A lightweight management UI for Apache Kafka Connect
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+home: https://github.com/mcnabb998/kconnect-console
+sources:
+  - https://github.com/mcnabb998/kconnect-console
+keywords:
+  - kafka
+  - kafka-connect
+  - management
+  - ui
+  - monitoring
+maintainers:
+  - name: kconnect-console
+    url: https://github.com/mcnabb998/kconnect-console
+icon: https://kafka.apache.org/images/apache-kafka.png

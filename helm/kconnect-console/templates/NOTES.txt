@@ -1,0 +1,78 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your release is named {{ .Release.Name }}.
+
+To learn more about the release, try:
+
+  $ helm status {{ .Release.Name }}
+  $ helm get all {{ .Release.Name }}
+
+=============================================================================
+kconnect-console is now deployed!
+=============================================================================
+
+🎯 Configuration:
+   Kafka Connect URL: {{ .Values.kafkaConnect.url }}
+
+{{- if .Values.ingress.enabled }}
+
+🌐 Access your kconnect-console dashboard:
+{{- range .Values.ingress.hosts }}
+   https://{{ .host }}
+{{- end }}
+
+{{- else }}
+
+🌐 To access your kconnect-console dashboard:
+
+   1. Get the application URL by running:
+
+      {{- if contains "NodePort" .Values.web.service.type }}
+      export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "kconnect-console.fullname" . }}-web)
+      export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+      echo http://$NODE_IP:$NODE_PORT
+      {{- else if contains "LoadBalancer" .Values.web.service.type }}
+      NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+            Watch the status with: kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "kconnect-console.fullname" . }}-web
+      export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "kconnect-console.fullname" . }}-web --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+      echo http://$SERVICE_IP:{{ .Values.web.service.port }}
+      {{- else if contains "ClusterIP" .Values.web.service.type }}
+      kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "kconnect-console.fullname" . }}-web {{ .Values.web.service.port }}:{{ .Values.web.service.port }}
+      echo "Visit http://127.0.0.1:{{ .Values.web.service.port }} to use your application"
+      {{- end }}
+
+{{- end }}
+
+📊 Check deployment status:
+
+   kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+🔍 View logs:
+
+   Proxy logs:  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=proxy
+   Web logs:    kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=web
+
+⚙️  Health check:
+
+   kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "kconnect-console.fullname" . }}-proxy 8080:8080
+   curl http://localhost:8080/health
+
+{{- if .Values.proxy.autoscaling.enabled }}
+
+📈 Autoscaling is enabled for proxy:
+   Min replicas: {{ .Values.proxy.autoscaling.minReplicas }}
+   Max replicas: {{ .Values.proxy.autoscaling.maxReplicas }}
+{{- end }}
+
+{{- if .Values.web.autoscaling.enabled }}
+
+📈 Autoscaling is enabled for web:
+   Min replicas: {{ .Values.web.autoscaling.minReplicas }}
+   Max replicas: {{ .Values.web.autoscaling.maxReplicas }}
+{{- end }}
+
+💡 Need help?
+   - Documentation: https://github.com/mcnabb998/kconnect-console
+   - Issues: https://github.com/mcnabb998/kconnect-console/issues
+
+Happy managing your Kafka Connect clusters!

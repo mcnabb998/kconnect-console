@@ -15,6 +15,7 @@ const navItems: NavItem[] = [
   { href: '/', label: 'Home', Icon: HomeIcon },
   { href: '/cluster', label: 'Cluster', Icon: ClusterIcon },
   { href: '/monitoring', label: 'Monitoring', Icon: PulseIcon },
+  { href: '/health', label: 'Health', Icon: HeartIcon },
   { href: '/connectors/templates', label: 'Create', Icon: PlusSquareIcon },
   { href: '/capabilities', label: 'Capabilities', Icon: SparklesIcon },
   { href: '/settings', label: 'Settings', Icon: SettingsIcon },
@@ -171,6 +172,26 @@ function SparklesIcon({ className }: { className?: string }) {
     >
       <path
         d="M12 3v3m0 12v3m9-9h-3M6 12H3m14.5-6.5L18 7l1.5 1.5L18 10l-1.5-1.5L15 10l1.5-1.5L15 7l1.5-1.5L18 7l1.5-1.5ZM5.5 15.5 7 17l1.5 1.5L7 20l-1.5-1.5L4 20l1.5-1.5L4 17l1.5-1.5L7 17l-1.5-1.5Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function HeartIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M12 21S4 15 4 9.5C4 7 6 5 8.5 5c1.5 0 3 1 3.5 2.5C12.5 6 14 5 15.5 5 18 5 20 7 20 9.5c0 5.5-8 11.5-8 11.5Z"
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"
