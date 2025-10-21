@@ -1,24 +1,78 @@
 # kconnect-console
 
-A production-ready, lightweight UI and proxy for managing Kafka Connect clusters
+**A modern, production-ready web UI for managing Kafka Connect clusters**
 
-## Overview
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Tests](https://github.com/mcnabb998/kconnect-console/workflows/Tests/badge.svg)](https://github.com/mcnabb998/kconnect-console/actions)
 
-**kconnect-console** is a robust, performant web application for managing Apache Kafka Connect clusters. It provides operators with a modern dashboard to monitor, configure, and control Kafka connectors without direct REST API interaction.
+## 🎯 What is kconnect-console?
 
-### Architecture
+**kconnect-console** is a lightweight management UI for Apache Kafka Connect. It sits in front of your existing Kafka Connect cluster and provides:
+
+- 📊 **Real-time monitoring** of connectors and tasks
+- 🎮 **Full lifecycle management** (create, pause, resume, restart, delete)
+- 🔄 **Bulk operations** across multiple connectors
+- 🎨 **Modern UI** with auto-refresh, toast notifications, and loading states
+- 🔒 **Security** with credential redaction and CORS configuration
+
+**Important**: kconnect-console is a **management UI only** - it assumes you already have Kafka Connect running. It doesn't replace or include Kafka/Zookeeper/Kafka Connect.
+
+## 🚀 Quick Start
+
+**👉 [Read the full Getting Started Guide](./GETTING_STARTED.md)**
+
+### Already have Kafka Connect?
+
+Deploy just the UI + proxy:
+
+```bash
+git clone https://github.com/mcnabb998/kconnect-console.git
+cd kconnect-console/compose
+
+# Configure your Kafka Connect URL
+echo "KAFKA_CONNECT_URL=http://your-kafka-connect:8083" > .env
+
+# Start UI + Proxy only
+docker compose up -d kconnect-proxy kconnect-web
+
+# Access at http://localhost:3000
+```
+
+### Want to test locally?
+
+We provide a full Kafka stack for development:
+
+```bash
+cd compose
+docker compose up -d  # Starts everything including Kafka
+```
+
+[**📖 See detailed instructions →**](./GETTING_STARTED.md)
+
+## 🏗️ Architecture
 
 ```
-Browser → Next.js UI (port 3000) → Go Proxy (port 8080) → Kafka Connect API (port 8083)
-                                                                ↓
-                                                          Kafka Cluster
+┌─────────┐      ┌──────────────┐      ┌──────────────┐      ┌────────────────┐
+│ Browser │─────▶│   Next.js    │─────▶│   Go Proxy   │─────▶│ Kafka Connect  │
+│         │      │   (port 3000)│      │  (port 8080) │      │   (port 8083)  │
+└─────────┘      └──────────────┘      └──────────────┘      └────────────────┘
+                                                                       │
+                                                                       ▼
+                                                                 ┌──────────┐
+                                                                 │  Kafka   │
+                                                                 │ Cluster  │
+                                                                 └──────────┘
 ```
 
-**Components:**
+**Components you deploy:**
 
-- **Go Proxy** (port 8080): High-performance proxy with credential redaction, health checks, and caching
-- **React/Next.js Frontend** (port 3000): Modern UI with Tailwind CSS 4 and Next.js 15 App Router
-- **Complete Kafka Stack**: Zookeeper, Kafka, and Kafka Connect with pre-installed connectors
+- **Go Proxy** - High-performance API proxy with health checks and caching
+- **React/Next.js UI** - Modern web interface with real-time updates
+
+**Components you already have:**
+
+- **Kafka Connect** - Your existing Kafka Connect cluster
+- **Kafka** - Your existing Kafka brokers
 
 ### Production-Ready Features
 
