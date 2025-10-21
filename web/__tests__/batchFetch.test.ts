@@ -219,8 +219,10 @@ describe('batchFetchSettled', () => {
   it('should convert non-Error to Error', async () => {
     const items = [1];
     const processor = async () => {
-      // eslint-disable-next-line @typescript-eslint/no-throw-literal
-      throw 'String error';
+      // Testing error handling by throwing a non-Error value
+      // This is intentional for testing purposes only
+      const nonError: unknown = 'String error';
+      throw nonError;
     };
 
     const { failures } = await batchFetchSettled(items, processor);
