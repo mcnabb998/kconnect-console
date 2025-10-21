@@ -17,23 +17,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="bg-gray-50 text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100">
-        <ThemeProvider>
-          <ErrorBoundary>
-            <MonitoringSummaryProvider>
-              <div className="flex min-h-screen">
-                <aside className="w-72 shrink-0 border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-                  <Navigation />
-                </aside>
-                <main className="flex flex-1 justify-center">
-                  <div className="flex w-full max-w-[1200px] flex-col gap-6 px-8 py-8">
-                    {children}
-                  </div>
-                </main>
-              </div>
-            </MonitoringSummaryProvider>
-          </ErrorBoundary>
-        </ThemeProvider>
+      <body className="bg-gray-50 text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100">
+        <ErrorBoundary>
+          <MonitoringSummaryProvider>
+            <div className="flex min-h-screen">
+              <aside className="w-72 shrink-0 border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+                <Navigation />
+              </aside>
+              <main className="flex flex-1 justify-center">
+                <div className="flex w-full max-w-[1200px] flex-col gap-6 px-8 py-8">
+                  {children}
+                </div>
+              </main>
+            </div>
+          </MonitoringSummaryProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

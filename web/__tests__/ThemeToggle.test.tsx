@@ -1,7 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { ThemeProvider, useTheme } from '@/hooks/useTheme';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 // Mock localStorage
@@ -41,112 +40,225 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
-// Test component that uses the theme
-function TestComponent() {
-  const { theme, effectiveTheme } = useTheme();
-  return (
-    <div>
-      <div data-testid="current-theme">{theme}</div>
-      <div data-testid="effective-theme">{effectiveTheme}</div>
-      <ThemeToggle />
-    </div>
-  );
-}
-
-describe('Theme System', () => {
+describe('ThemeToggle', () => {
   beforeEach(() => {
     localStorageMock.clear();
     document.documentElement.classList.remove('dark');
-  });
-
-  it('should render theme toggle button', () => {
-    render(
-      <ThemeProvider>
-        <ThemeToggle />
-      </ThemeProvider>
-    );
-
-    expect(screen.getByRole('button', { name: /switch theme/i })).toBeInTheDocument();
-  });
-
-  it('should cycle through themes when clicked', async () => {
-    render(
-      <ThemeProvider>
-        <TestComponent />
-      </ThemeProvider>
-    );
-
-    const button = screen.getByRole('button', { name: /switch theme/i });
-    const currentThemeDiv = screen.getByTestId('current-theme');
-
-    // Should start with system
-    expect(currentThemeDiv).toHaveTextContent('system');
-
-    // Click to go to light
-    fireEvent.click(button);
-    await waitFor(() => {
-      expect(currentThemeDiv).toHaveTextContent('light');
-    });
-
-    // Click to go to dark
-    fireEvent.click(button);
-    await waitFor(() => {
-      expect(currentThemeDiv).toHaveTextContent('dark');
-    });
-
-    // Click to go back to system
-    fireEvent.click(button);
-    await waitFor(() => {
-      expect(currentThemeDiv).toHaveTextContent('system');
-    });
-  });
-
-  it('should persist theme to localStorage', async () => {
-    render(
-      <ThemeProvider>
-        <TestComponent />
-      </ThemeProvider>
-    );
-
-    const button = screen.getByRole('button', { name: /switch theme/i });
-
-    // Click to set light theme
-    fireEvent.click(button);
-    await waitFor(() => {
-      expect(localStorageMock.getItem('theme')).toBe('light');
-    });
-
-    // Click to set dark theme
-    fireEvent.click(button);
-    await waitFor(() => {
-      expect(localStorageMock.getItem('theme')).toBe('dark');
-    });
-  });
-
-  it('should apply dark class to document when dark theme is active', async () => {
-    render(
-      <ThemeProvider>
-        <TestComponent />
-      </ThemeProvider>
-    );
-
-    const button = screen.getByRole('button', { name: /switch theme/i });
     
-    // Initially should not have dark class (system defaults to light in our mock)
-    expect(document.documentElement.classList.contains('dark')).toBe(false);
+    // Reset matchMedia to default (prefer light mode)
+    window.matchMedia = jest.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    }));
+  });
 
-    // Click twice to get to dark theme
-    fireEvent.click(button); // system -> light
-    fireEvent.click(button); // light -> dark
+  it('renders the theme toggle button', async () => {
+    render(<ThemeToggle />);
+    
+    await waitFor(() => {
+      const button = screen.getByRole('button', { name: /switch to/i });
+      expect(button).toBeInTheDocument();
+    });
+  });
+
+  it('initializes with light theme by default', async () => {
+    render(<ThemeToggle />);
+    
+    await waitFor(() => {
+      const button = screen.getByRole('button', { name: /switch to dark mode/i });
+      expect(button).toBeInTheDocument();
+    });
+    
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
+  });
+
+  it('toggles to dark mode when clicked', async () => {
+    render(<ThemeToggle />);
+    
+    await waitFor(() => {
+      const button = screen.getByRole('button', { name: /switch to dark mode/i });
+      expect(button).toBeInTheDocument();
+    });
+
+    const button = screen.getByRole('button', { name: /switch to dark mode/i });
+    fireEvent.click(button);
 
     await waitFor(() => {
       expect(document.documentElement.classList.contains('dark')).toBe(true);
     });
 
-    // Click to go back to system (which is light in our mock)
-    fireEvent.click(button); // dark -> system
+    await waitFor(() => {
+      const updatedButton = screen.getByRole('button', { name: /switch to light mode/i });
+      expect(updatedButton).toBeInTheDocument();
+    });
+  });
+
+  it('toggles back to light mode when clicked again', async () => {
+    render(<ThemeToggle />);
+    
+    await waitFor(() => {
+      const button = screen.getByRole('button');
+      expect(button).toBeInTheDocument();
+    });
+
+    const button = screen.getByRole('button');
+    
+    // Toggle to dark
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+    });
+
+    // Toggle back to light
+    fireEvent.click(button);
     await waitFor(() => {
       expect(document.documentElement.classList.contains('dark')).toBe(false);
+    });
+  });
+
+  it('persists theme preference to localStorage', async () => {
+    render(<ThemeToggle />);
+    
+    await waitFor(() => {
+      const button = screen.getByRole('button');
+      expect(button).toBeInTheDocument();
+    });
+
+    const button = screen.getByRole('button');
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(localStorageMock.getItem('theme')).toBe('dark');
+    });
+
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(localStorageMock.getItem('theme')).toBe('light');
+    });
+  });
+
+  it('initializes from localStorage if available', async () => {
+    localStorageMock.setItem('theme', 'dark');
+    
+    render(<ThemeToggle />);
+    
+    await waitFor(() => {
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+    });
+
+    await waitFor(() => {
+      const button = screen.getByRole('button', { name: /switch to light mode/i });
+      expect(button).toBeInTheDocument();
+    });
+  });
+
+  it('respects system preference when no localStorage value', async () => {
+    window.matchMedia = jest.fn().mockImplementation((query) => ({
+      matches: query === '(prefers-color-scheme: dark)',
+      media: query,
+      onchange: null,
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    }));
+
+    render(<ThemeToggle />);
+    
+    await waitFor(() => {
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+    });
+
+    await waitFor(() => {
+      const button = screen.getByRole('button', { name: /switch to light mode/i });
+      expect(button).toBeInTheDocument();
+    });
+  });
+
+  it('applies dark class to document root when dark mode is active', async () => {
+    // Explicitly set to light mode first
+    localStorageMock.setItem('theme', 'light');
+    document.documentElement.classList.remove('dark');
+    
+    render(<ThemeToggle />);
+    
+    await waitFor(() => {
+      const button = screen.getByRole('button');
+      expect(button).toBeInTheDocument();
+    });
+
+    // Wait for component to mount and apply theme
+    await waitFor(() => {
+      expect(document.documentElement.classList.contains('dark')).toBe(false);
+    });
+
+    const button = screen.getByRole('button');
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+    });
+  });
+
+  it('removes dark class from document root when light mode is active', async () => {
+    document.documentElement.classList.add('dark');
+    localStorageMock.setItem('theme', 'dark');
+    
+    render(<ThemeToggle />);
+    
+    await waitFor(() => {
+      const button = screen.getByRole('button');
+      expect(button).toBeInTheDocument();
+    });
+
+    const button = screen.getByRole('button');
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(document.documentElement.classList.contains('dark')).toBe(false);
+    });
+  });
+
+  it('has proper accessibility attributes', async () => {
+    // Explicitly set to light mode
+    localStorageMock.setItem('theme', 'light');
+    document.documentElement.classList.remove('dark');
+    
+    render(<ThemeToggle />);
+    
+    await waitFor(() => {
+      const button = screen.getByRole('button', { name: /switch to dark mode/i });
+      expect(button).toBeInTheDocument();
+      expect(button).toHaveAttribute('type', 'button');
+      expect(button).toHaveAttribute('aria-label', 'Switch to dark mode');
+    });
+  });
+
+  it('updates aria-label when theme changes', async () => {
+    // Explicitly set to light mode
+    localStorageMock.setItem('theme', 'light');
+    document.documentElement.classList.remove('dark');
+    
+    render(<ThemeToggle />);
+    
+    await waitFor(() => {
+      const button = screen.getByRole('button', { name: /switch to dark mode/i });
+      expect(button).toBeInTheDocument();
+    });
+
+    const button = screen.getByRole('button');
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(button).toHaveAttribute('aria-label', 'Switch to light mode');
     });
   });
 });
