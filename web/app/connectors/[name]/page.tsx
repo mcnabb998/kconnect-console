@@ -5,9 +5,11 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 import { SkeletonBadge, SkeletonCard, SkeletonLine } from '@/components/Skeleton';
+import { ToastContainer } from '@/components/ToastContainer';
 import TransformationsTab from './TransformationsTab';
 import type { ConnectorGetResponse } from '@/types/connect';
 import { getProxyUrl, API_CONFIG } from '@/lib/config';
+import { useToast } from '@/hooks/useToast';
 
 const PROXY = getProxyUrl();
 
@@ -30,30 +32,28 @@ export default function ConnectorDetail() {
   const router = useRouter();
   const name = params?.name as string;
   const cluster = API_CONFIG.clusterId;
+  const { toasts, success, error: showErrorToast, dismissToast } = useToast();
 
   const [status, setStatus] = useState<ConnectorStatus | null>(null);
   const [config, setConfig] = useState<ConnectorGetResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [showCreatedToast, setShowCreatedToast] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'transformations'>('overview');
 
   useEffect(() => {
     if (name) {
       fetchConnectorDetails();
-      
+
       // Check if redirected from creation
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('created') === 'true') {
-        setShowCreatedToast(true);
+        success(`Connector "${name}" created successfully`);
         // Remove the query param from URL
         router.replace(`/connectors/${name}`, undefined);
-        // Hide toast after 5 seconds
-        setTimeout(() => setShowCreatedToast(false), 5000);
       }
     }
-  }, [name, router]);
+  }, [name, router, success]);
 
   const fetchConnectorDetails = async () => {
     try {
@@ -95,13 +95,18 @@ export default function ConnectorDetail() {
         throw new Error(`Failed to ${action} connector`);
       }
 
+      // Show success toast
+      success(`Connector ${action}d successfully`);
+
       // Refresh details after action
       setTimeout(() => {
         fetchConnectorDetails();
         setActionLoading(false);
       }, 1000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      setError(errorMessage);
+      showErrorToast(errorMessage);
       setActionLoading(false);
     }
   };
@@ -125,9 +130,12 @@ export default function ConnectorDetail() {
         throw new Error('Failed to delete connector');
       }
 
+      success(`Connector "${name}" deleted successfully`);
       router.push('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      setError(errorMessage);
+      showErrorToast(errorMessage);
       setActionLoading(false);
     }
   };
@@ -224,8 +232,10 @@ export default function ConnectorDetail() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow">
+    <>
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      <div className="min-h-screen bg-gray-50">
+        <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
@@ -252,13 +262,6 @@ export default function ConnectorDetail() {
 
           {activeTab === 'overview' ? (
             <div className="space-y-6">
-              {showCreatedToast && (
-                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
-                  <p className="font-bold">Success!</p>
-                  <p>Connector "{name}" has been created successfully.</p>
-                </div>
-              )}
-
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
                   <p className="font-bold">Error</p>
@@ -361,6 +364,7 @@ export default function ConnectorDetail() {
           )}
         </div>
       </main>
-    </div>
+      </div>
+    </>
   );
 }

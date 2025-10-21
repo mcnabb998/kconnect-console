@@ -101,7 +101,7 @@ describe('ConnectorDetail page', () => {
     await screen.findByRole('heading', { name: 'Status' });
     expect(screen.getByText('Task 1')).toBeInTheDocument();
     expect(
-      screen.getByText('Connector "connector-one" has been created successfully.')
+      screen.getByText('Connector "connector-one" created successfully')
     ).toBeInTheDocument();
 
     expect(screen.getAllByText('RUNNING').length).toBeGreaterThan(0);
@@ -113,15 +113,13 @@ describe('ConnectorDetail page', () => {
       screen.getByText(/"connector.class": "io\.confluent\.kafka\.connect\.datagen\.DatagenConnector"/)
     ).toBeInTheDocument();
 
-    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 5000);
-
     await act(async () => {
       jest.advanceTimersByTime(5000);
     });
 
     await waitFor(() => {
       expect(
-        screen.queryByText('Connector "connector-one" has been created successfully.')
+        screen.queryByText('Connector "connector-one" created successfully')
       ).not.toBeInTheDocument();
     });
 
@@ -129,6 +127,7 @@ describe('ConnectorDetail page', () => {
   });
 
   it('displays an error message when fetching details fails', async () => {
+    jest.useFakeTimers();
     const statusFailure = {
       ok: false
     } as Response;
@@ -212,6 +211,7 @@ describe('ConnectorDetail page', () => {
   });
 
   it('shows errors when actions fail', async () => {
+    jest.useFakeTimers();
     queueSuccessfulFetch();
 
     render(<ConnectorDetail />);
@@ -222,10 +222,18 @@ describe('ConnectorDetail page', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
 
-    await screen.findByText('Failed to pause connector');
+    // Check for error toast
+    await waitFor(() => {
+      const alerts = screen.getAllByRole('alert');
+      const hasErrorMessage = alerts.some(alert =>
+        alert.textContent?.includes('Failed to pause connector')
+      );
+      expect(hasErrorMessage).toBe(true);
+    });
   });
 
   it('redirects after successful deletion', async () => {
+    jest.useFakeTimers();
     queueSuccessfulFetch();
 
     render(<ConnectorDetail />);
@@ -249,6 +257,7 @@ describe('ConnectorDetail page', () => {
   });
 
   it('does not delete the connector when confirmation is cancelled', async () => {
+    jest.useFakeTimers();
     queueSuccessfulFetch();
 
     render(<ConnectorDetail />);
@@ -268,6 +277,7 @@ describe('ConnectorDetail page', () => {
   });
 
   it('surfaces errors when deletion fails', async () => {
+    jest.useFakeTimers();
     queueSuccessfulFetch();
 
     render(<ConnectorDetail />);
@@ -279,7 +289,14 @@ describe('ConnectorDetail page', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
 
-    await screen.findByText('Failed to delete connector');
+    // Check for error toast
+    await waitFor(() => {
+      const alerts = screen.getAllByRole('alert');
+      const hasErrorMessage = alerts.some(alert =>
+        alert.textContent?.includes('Failed to delete connector')
+      );
+      expect(hasErrorMessage).toBe(true);
+    });
 
     expect(push).not.toHaveBeenCalled();
 
