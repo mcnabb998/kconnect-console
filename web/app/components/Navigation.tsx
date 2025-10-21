@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useMonitoringSummary } from '../monitoring/MonitoringSummaryProvider';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import type { ReactElement } from 'react';
 
 type NavItem = {
@@ -28,8 +29,13 @@ export function Navigation() {
   return (
     <nav className="flex h-full flex-col px-6 py-8" aria-label="Main navigation">
       <div className="mb-8 flex flex-col gap-1">
-        <p className="text-lg font-semibold text-gray-900">Kafka Connect Console</p>
-        <p className="text-sm text-gray-500">Manage and monitor your data pipelines</p>
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">Kafka Connect Console</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Manage and monitor your data pipelines</p>
+          </div>
+          <ThemeToggle />
+        </div>
       </div>
       <ul className="flex flex-1 flex-col gap-2">
         {navItems.map(({ href, label, Icon }) => {
@@ -41,20 +47,20 @@ export function Navigation() {
               <Link
                 href={href}
                 aria-current={isActive ? 'page' : undefined}
-                className={`group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+                className={`group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900 ${
                   isActive
-                    ? 'bg-blue-50 text-blue-600'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200'
                 }`}
               >
                 <Icon
                   className={`h-5 w-5 ${
-                    isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-500'
+                    isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 group-hover:text-gray-500 dark:text-gray-500 dark:group-hover:text-gray-400'
                   }`}
                 />
                 <span className="flex-1">{label}</span>
                 {showFailureBadge && (
-                  <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-600">
+                  <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-600 dark:bg-red-900/30 dark:text-red-400">
                     !
                   </span>
                 )}
