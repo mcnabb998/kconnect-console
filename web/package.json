@@ -6,7 +6,12 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "test": "node ./scripts/run-tests.mjs"
+    "test": "node ./scripts/run-tests.mjs",
+    "test:ci": "npm test -- --coverage -- --watchAll=false",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "typecheck": "tsc --noEmit",
+    "validate": "npm run typecheck && npm run lint && npm run test:ci && npm run build"
   },
   "dependencies": {
     "next": "15.5.4",

@@ -13,11 +13,13 @@
 ### 🟠 HIGH PRIORITY - Next Sprint (Major UX Issues)
 
 #### Auto-Refresh & Real-Time Updates
-- [ ] **[#1] Auto-refresh on connector list page** - 2 hours
+- [x] **[#1] Auto-refresh on connector list page** - 2 hours ✅ COMPLETED
   - **File:** `web/app/page.tsx`
   - **Issue:** Users must manually click "Refresh" to see status updates
   - **Fix:** Add 10-second polling with pause/resume control
   - **Impact:** Critical for operational awareness
+  - **Completed:** 2025-10-20 - Commit f3b1802
+  - **Tests:** 11/11 passing (`__tests__/autoRefresh.test.tsx`)
 
 - [ ] **[#2] Auto-refresh on connector detail page** - 2 hours
   - **File:** `web/app/connectors/[name]/page.tsx`
