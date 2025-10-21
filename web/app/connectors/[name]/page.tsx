@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+import { LoadingButton } from '@/components/LoadingButton';
 import { SkeletonBadge, SkeletonCard, SkeletonLine } from '@/components/Skeleton';
 import { ToastContainer } from '@/components/ToastContainer';
 import TransformationsTab from './TransformationsTab';
@@ -38,7 +39,7 @@ export default function ConnectorDetail() {
   const [config, setConfig] = useState<ConnectorGetResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'transformations'>('overview');
 
   useEffect(() => {
@@ -83,7 +84,7 @@ export default function ConnectorDetail() {
 
   const handleAction = async (action: 'pause' | 'resume' | 'restart') => {
     try {
-      setActionLoading(true);
+      setActionLoading(action);
       setError(null);
 
       const url = `${PROXY}/api/${cluster}/connectors/${name}/${action}`;
@@ -101,13 +102,13 @@ export default function ConnectorDetail() {
       // Refresh details after action
       setTimeout(() => {
         fetchConnectorDetails();
-        setActionLoading(false);
+        setActionLoading(null);
       }, 1000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
       setError(errorMessage);
       showErrorToast(errorMessage);
-      setActionLoading(false);
+      setActionLoading(null);
     }
   };
 
@@ -117,7 +118,7 @@ export default function ConnectorDetail() {
     }
 
     try {
-      setActionLoading(true);
+      setActionLoading('delete');
       setError(null);
 
       const response = await fetch(
@@ -136,7 +137,7 @@ export default function ConnectorDetail() {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
       setError(errorMessage);
       showErrorToast(errorMessage);
-      setActionLoading(false);
+      setActionLoading(null);
     }
   };
 
@@ -270,34 +271,43 @@ export default function ConnectorDetail() {
               )}
 
               <div className="flex flex-wrap gap-2">
-                <button
+                <LoadingButton
                   onClick={() => handleAction('pause')}
-                  disabled={actionLoading || status?.connector.state === 'PAUSED'}
-                  className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={status?.connector.state === 'PAUSED' || actionLoading !== null}
+                  loading={actionLoading === 'pause'}
+                  loadingText="Pausing..."
+                  className="bg-yellow-500 hover:bg-yellow-700 focus-visible:outline-yellow-500"
                 >
                   Pause
-                </button>
-                <button
+                </LoadingButton>
+                <LoadingButton
                   onClick={() => handleAction('resume')}
-                  disabled={actionLoading || status?.connector.state !== 'PAUSED'}
-                  className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={status?.connector.state !== 'PAUSED' || actionLoading !== null}
+                  loading={actionLoading === 'resume'}
+                  loadingText="Resuming..."
+                  className="bg-green-500 hover:bg-green-700 focus-visible:outline-green-500"
                 >
                   Resume
-                </button>
-                <button
+                </LoadingButton>
+                <LoadingButton
                   onClick={() => handleAction('restart')}
-                  disabled={actionLoading}
-                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={actionLoading !== null}
+                  loading={actionLoading === 'restart'}
+                  loadingText="Restarting..."
+                  className="bg-blue-500 hover:bg-blue-700 focus-visible:outline-blue-500"
                 >
                   Restart
-                </button>
-                <button
+                </LoadingButton>
+                <LoadingButton
                   onClick={handleDelete}
-                  disabled={actionLoading}
-                  className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed ml-auto"
+                  disabled={actionLoading !== null}
+                  loading={actionLoading === 'delete'}
+                  loadingText="Deleting..."
+                  variant="danger"
+                  className="ml-auto"
                 >
                   Delete
-                </button>
+                </LoadingButton>
               </div>
 
               {status && (

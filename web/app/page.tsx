@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'rea
 import { useSearchParams, useRouter } from 'next/navigation';
 
 import { ConnectorBulkActions } from '@/components/ConnectorBulkActions';
+import { LoadingButton } from '@/components/LoadingButton';
 import { SkeletonCard, SkeletonLine, SkeletonSurface } from '@/components/Skeleton';
 import { ToastContainer } from '@/components/ToastContainer';
 import { performConnectorAction, type ConnectorAction } from '@/lib/api';
@@ -449,13 +450,14 @@ function ConnectorListPage() {
             >
               Create Connector
             </Link>
-            <button
-              type="button"
+            <LoadingButton
+              variant="ghost"
               onClick={fetchConnectors}
-              className="inline-flex items-center justify-center gap-1 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
+              loading={loading}
+              loadingText="Refreshing..."
             >
               Refresh
-            </button>
+            </LoadingButton>
             <button
               type="button"
               onClick={() => setAutoRefresh(!autoRefresh)}
