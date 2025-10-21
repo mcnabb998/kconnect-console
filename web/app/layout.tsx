@@ -3,6 +3,7 @@ import "./globals.css";
 import { MonitoringSummaryProvider } from "./monitoring/MonitoringSummaryProvider";
 import { Navigation } from "./components/Navigation";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ThemeProvider } from "@/hooks/useTheme";
 
 export const metadata: Metadata = {
   title: "Kafka Connect Console",

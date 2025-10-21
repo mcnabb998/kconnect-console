@@ -38,10 +38,10 @@ interface ConnectorDetails {
 const connectorsEndpoint = buildApiUrl('/connectors');
 
 const stateStyles: Record<string, string> = {
-  running: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
-  paused: 'bg-amber-50 text-amber-700 ring-amber-600/20',
-  failed: 'bg-rose-50 text-rose-700 ring-rose-600/20',
-  unassigned: 'bg-slate-100 text-slate-600 ring-slate-500/20',
+  running: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-900/50 dark:text-emerald-400 dark:ring-emerald-500/30',
+  paused: 'bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-900/50 dark:text-amber-400 dark:ring-amber-500/30',
+  failed: 'bg-rose-50 text-rose-700 ring-rose-600/20 dark:bg-rose-900/50 dark:text-rose-400 dark:ring-rose-500/30',
+  unassigned: 'bg-slate-100 text-slate-600 ring-slate-500/20 dark:bg-slate-700 dark:text-slate-400 dark:ring-slate-500/30',
 };
 
 const normalizeState = (value: string) => value?.toLowerCase() ?? 'unknown';
@@ -430,16 +430,16 @@ function ConnectorListPage() {
     <>
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-4 border-b border-gray-200 pb-6">
+        <div className="flex flex-col gap-4 border-b border-gray-200 pb-6 dark:border-gray-700">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-semibold text-gray-900">Connectors</h1>
-              <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium uppercase tracking-wide text-gray-700">
+              <h1 className="text-3xl font-semibold text-gray-900 dark:text-gray-100">Connectors</h1>
+              <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium uppercase tracking-wide text-gray-700 dark:bg-gray-700 dark:text-gray-300">
                 Cluster · {CLUSTER_ID}
               </span>
             </div>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               Monitor and orchestrate Kafka Connect connectors for this cluster.
             </p>
           </div>
@@ -463,8 +463,8 @@ function ConnectorListPage() {
               onClick={() => setAutoRefresh(!autoRefresh)}
               className={`inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
                 autoRefresh
-                  ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 focus-visible:outline-emerald-500'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 focus-visible:outline-slate-500'
+                  ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 focus-visible:outline-emerald-500 dark:bg-emerald-900/50 dark:text-emerald-400 dark:hover:bg-emerald-900/70'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 focus-visible:outline-slate-500 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
               }`}
               aria-label={autoRefresh ? 'Disable auto-refresh' : 'Enable auto-refresh'}
             >
@@ -486,28 +486,28 @@ function ConnectorListPage() {
           </div>
         </div>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
             <span>{filteredConnectors.length} shown</span>
-            <span className="hidden h-4 w-px bg-slate-200 lg:inline-block" aria-hidden />
+            <span className="hidden h-4 w-px bg-slate-200 lg:inline-block dark:bg-slate-700" aria-hidden />
             <span>{connectors.length} total</span>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-            <label className="flex w-full items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 sm:w-64">
+            <label className="flex w-full items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 sm:w-64 dark:border-slate-600 dark:bg-gray-800 dark:text-slate-300">
               <span className="sr-only">Search connectors</span>
               <input
                 type="search"
                 placeholder="Search connectors"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
-                className="w-full border-none bg-transparent p-0 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                className="w-full border-none bg-transparent p-0 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
               />
             </label>
-            <label className="flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20">
+            <label className="flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 dark:border-slate-600 dark:bg-gray-800 dark:text-slate-300">
               <span className="sr-only">Filter by state</span>
               <select
                 value={stateFilter}
                 onChange={(event) => setStateFilter(event.target.value)}
-                className="w-full border-none bg-transparent p-0 text-sm text-slate-900 focus:outline-none"
+                className="w-full border-none bg-transparent p-0 text-sm text-slate-900 focus:outline-none dark:text-slate-100"
               >
                 <option value="all">All states</option>
                 <option value="running">Running</option>
@@ -552,12 +552,12 @@ function ConnectorListPage() {
               ))}
             </ul>
           </SkeletonSurface>
-          <div className="mt-10 rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
+          <div className="mt-10 rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm dark:border-slate-700 dark:bg-gray-800">
             <div
-              className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-4 border-emerald-100 border-t-emerald-500"
+              className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-4 border-emerald-100 border-t-emerald-500 dark:border-emerald-900 dark:border-t-emerald-400"
               aria-hidden
             />
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               {loadingProgress
                 ? `Loading connectors ${loadingProgress.current}/${loadingProgress.total}…`
                 : 'Loading connectors…'}
@@ -567,28 +567,28 @@ function ConnectorListPage() {
       )}
 
       {error && (
-        <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-6">
-          <h2 className="text-lg font-semibold text-rose-700">Error</h2>
-          <p className="mt-2 text-sm text-rose-600">{error}</p>
+        <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-6 dark:border-rose-900/50 dark:bg-rose-900/20">
+          <h2 className="text-lg font-semibold text-rose-700 dark:text-rose-400">Error</h2>
+          <p className="mt-2 text-sm text-rose-600 dark:text-rose-300">{error}</p>
         </div>
       )}
 
       {actionError && !error && (
-        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-300">
           {actionError}
         </div>
       )}
 
       {!loading && !error && connectors.length === 0 && (
-        <div className="mt-10 rounded-2xl border border-dashed border-slate-200 bg-white p-12 text-center shadow-sm">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
+        <div className="mt-10 rounded-2xl border border-dashed border-slate-200 bg-white p-12 text-center shadow-sm dark:border-slate-700 dark:bg-gray-800">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-900/50">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="1.5"
-              className="h-8 w-8 text-emerald-500"
+              className="h-8 w-8 text-emerald-500 dark:text-emerald-400"
               aria-hidden
             >
               <path
@@ -598,8 +598,8 @@ function ConnectorListPage() {
               />
             </svg>
           </div>
-          <h2 className="mt-6 text-xl font-semibold text-slate-900">No connectors yet</h2>
-          <p className="mt-2 text-sm text-slate-600">
+          <h2 className="mt-6 text-xl font-semibold text-slate-900 dark:text-slate-100">No connectors yet</h2>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
             Launch your first connector to start moving data. Use templates to accelerate configuration and validation.
           </p>
           <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -611,7 +611,7 @@ function ConnectorListPage() {
             </Link>
             <Link
               href="/connectors/templates"
-              className="inline-flex items-center justify-center rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
+              className="inline-flex items-center justify-center rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 dark:border-slate-600 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-700"
             >
               Explore templates
             </Link>
@@ -620,10 +620,10 @@ function ConnectorListPage() {
       )}
 
       {!loading && !error && connectors.length > 0 && (
-        <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-gray-800">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+              <thead className="bg-slate-50 dark:bg-gray-900">
                 <tr>
                   <th scope="col" className="w-12 px-4 py-3">
                     <input
@@ -633,71 +633,71 @@ function ConnectorListPage() {
                       checked={allFilteredSelected}
                       onChange={handleSelectAllFiltered}
                       disabled={filteredConnectorNames.length === 0}
-                      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500"
+                      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500 dark:border-slate-600 dark:bg-gray-700"
                     />
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                     Name
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                     State
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                     Tasks
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                     Plugin
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                     Topic(s)
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                     Worker ID
                   </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
+              <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-700 dark:bg-gray-800">
                 {paginatedConnectors.map((connector) => {
                   const normalizedState = normalizeState(connector.state);
                   const badgeClass = stateStyles[normalizedState] ?? 'bg-slate-100 text-slate-600 ring-slate-500/20';
 
                   return (
-                    <tr key={connector.name} className="hover:bg-slate-50">
+                    <tr key={connector.name} className="hover:bg-slate-50 dark:hover:bg-gray-700/50">
                       <td className="w-12 px-4 py-4">
                         <input
                           type="checkbox"
                           aria-label={`Select ${connector.name}`}
                           checked={selectedConnectors.has(connector.name)}
                           onChange={() => toggleConnectorSelection(connector.name)}
-                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500"
+                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500 dark:border-slate-600 dark:bg-gray-700"
                         />
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-emerald-700">
                         <Link
                           href={`/connectors/${encodeURIComponent(connector.name)}`}
-                          className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 transition hover:text-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+                          className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 transition hover:text-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300"
                         >
                           {connector.name}
                         </Link>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700 dark:text-slate-300">
                         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${badgeClass}`}>
                           {connector.state}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600">
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
                         {formatTasks(connector.tasks)}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600">
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
                         {connector.plugin}
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">
+                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
                         {connector.topics}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500">
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-500">
                         {connector.workerId ?? '—'}
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-right text-sm">
@@ -706,7 +706,7 @@ function ConnectorListPage() {
                             type="button"
                             onClick={() => handleConnectorAction(connector.name, 'pause')}
                             disabled={actionLoading === `${connector.name}-pause`}
-                            className="inline-flex items-center justify-center rounded-md border border-transparent px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex items-center justify-center rounded-md border border-transparent px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-400 dark:hover:bg-gray-700"
                           >
                             Pause
                           </button>
@@ -714,7 +714,7 @@ function ConnectorListPage() {
                             type="button"
                             onClick={() => handleConnectorAction(connector.name, 'resume')}
                             disabled={actionLoading === `${connector.name}-resume`}
-                            className="inline-flex items-center justify-center rounded-md border border-transparent px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex items-center justify-center rounded-md border border-transparent px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-400 dark:hover:bg-gray-700"
                           >
                             Resume
                           </button>
@@ -722,13 +722,13 @@ function ConnectorListPage() {
                             type="button"
                             onClick={() => handleConnectorAction(connector.name, 'restart')}
                             disabled={actionLoading === `${connector.name}-restart`}
-                            className="inline-flex items-center justify-center rounded-md border border-transparent px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex items-center justify-center rounded-md border border-transparent px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-400 dark:hover:bg-gray-700"
                           >
                             Restart
                           </button>
                           <Link
                             href={`/connectors/${encodeURIComponent(connector.name)}`}
-                            className="inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1.5 text-sm font-semibold text-emerald-700 transition hover:border-emerald-200 hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+                            className="inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1.5 text-sm font-semibold text-emerald-700 transition hover:border-emerald-200 hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:border-slate-600 dark:text-emerald-400 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/50"
                           >
                             View
                           </Link>
@@ -741,7 +741,7 @@ function ConnectorListPage() {
             </table>
           </div>
           {filteredConnectors.length === 0 && (
-            <div className="border-t border-slate-100 bg-slate-50 px-6 py-5 text-sm text-slate-600">
+            <div className="border-t border-slate-100 bg-slate-50 px-6 py-5 text-sm text-slate-600 dark:border-slate-700 dark:bg-gray-900 dark:text-slate-400">
               No connectors match your filters.
             </div>
           )}
@@ -749,13 +749,13 @@ function ConnectorListPage() {
       )}
 
       {!loading && !error && filteredConnectors.length > ITEMS_PER_PAGE && (
-        <div className="mt-6 flex items-center justify-between border-t border-slate-200 bg-white px-4 py-4 sm:px-6">
+        <div className="mt-6 flex items-center justify-between border-t border-slate-200 bg-white px-4 py-4 sm:px-6 dark:border-slate-700 dark:bg-gray-800">
           <div className="flex flex-1 justify-between sm:hidden">
             <button
               type="button"
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-gray-800 dark:text-slate-300 dark:hover:bg-gray-700"
             >
               Previous
             </button>
@@ -763,14 +763,14 @@ function ConnectorListPage() {
               type="button"
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-gray-800 dark:text-slate-300 dark:hover:bg-gray-700"
             >
               Next
             </button>
           </div>
           <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-slate-700">
+              <p className="text-sm text-slate-700 dark:text-slate-300">
                 Showing page <span className="font-medium">{currentPage}</span> of{' '}
                 <span className="font-medium">{totalPages}</span>
                 {' '}({filteredConnectors.length} total connectors)
@@ -782,21 +782,21 @@ function ConnectorListPage() {
                   type="button"
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="relative inline-flex items-center rounded-l-md border border-slate-300 bg-white px-2 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 focus:z-20 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="relative inline-flex items-center rounded-l-md border border-slate-300 bg-white px-2 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 focus:z-20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-gray-800 dark:text-slate-400 dark:hover:bg-gray-700"
                 >
                   <span className="sr-only">Previous</span>
                   <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                     <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
                   </svg>
                 </button>
-                <span className="relative inline-flex items-center border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700">
+                <span className="relative inline-flex items-center border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 dark:border-slate-600 dark:bg-gray-800 dark:text-slate-300">
                   Page {currentPage} of {totalPages}
                 </span>
                 <button
                   type="button"
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center rounded-r-md border border-slate-300 bg-white px-2 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 focus:z-20 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="relative inline-flex items-center rounded-r-md border border-slate-300 bg-white px-2 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 focus:z-20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-gray-800 dark:text-slate-400 dark:hover:bg-gray-700"
                 >
                   <span className="sr-only">Next</span>
                   <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
