@@ -219,7 +219,8 @@ describe('batchFetchSettled', () => {
   it('should convert non-Error to Error', async () => {
     const items = [1];
     const processor = async () => {
-      throw 'String error'; // eslint-disable-line @typescript-eslint/only-throw-error
+      // eslint-disable-next-line @typescript-eslint/no-throw-literal
+      throw 'String error';
     };
 
     const { failures } = await batchFetchSettled(items, processor);
