@@ -10,6 +10,8 @@ jobs:
   go-tests:
     name: Go Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -38,6 +40,8 @@ jobs:
   react-tests:
     name: React Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -67,6 +71,8 @@ jobs:
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: [go-tests, react-tests]
     steps:
       - name: Checkout code
@@ -118,6 +124,8 @@ jobs:
   lint:
     name: Lint and Format
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

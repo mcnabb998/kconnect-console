@@ -34,11 +34,13 @@
   - **Fix:** Show spinner and "Pausing..." text per button
   - **Impact:** Users don't know if click registered
 
-- [ ] **[#4] Success toast notifications** - 2 hours
-  - **File:** `web/app/connectors/[name]/page.tsx`
+- [x] **[#4] Success toast notifications** - 2 hours ✅ COMPLETED
+  - **Files:** `web/hooks/useToast.ts`, `web/components/Toast.tsx`, `web/components/ToastContainer.tsx`
   - **Issue:** No feedback when pause/resume/restart succeeds
-  - **Fix:** Show green toast "Connector paused successfully"
-  - **Impact:** Users unsure if action worked
+  - **Fix:** Implemented toast notification system with auto-dismiss and type-based colors
+  - **Impact:** Users now get clear feedback for all connector actions
+  - **Completed:** 2025-10-20 - Commits 89f2fed, 34739ef
+  - **Tests:** 26/26 passing (Toast + useToast), 113/113 total
 
 #### Error Handling
 - [ ] **[#5] Actionable error messages** - 4 hours
