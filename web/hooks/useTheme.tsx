@@ -18,7 +18,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   // Initialize theme from localStorage or system preference
   useEffect(() => {
-    const stored = localStorage.getItem('theme') as Theme | null;
+    if (typeof window === 'undefined') return;
+    const stored = window.localStorage.getItem('theme') as Theme | null;
     if (stored && ['light', 'dark', 'system'].includes(stored)) {
       setThemeState(stored);
     }
@@ -61,7 +62,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
-    localStorage.setItem('theme', newTheme);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('theme', newTheme);
+    }
   };
 
   return (
