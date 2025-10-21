@@ -1,5 +1,17 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Home from '../app/page';
+
+// Mock Next.js navigation hooks
+const mockRouter = {
+  replace: jest.fn(),
+  push: jest.fn(),
+};
+
+const mockSearchParams = {
+  get: jest.fn(),
+  toString: jest.fn(() => ''),
+};
 
 describe('Home page', () => {
   const fetchMock = jest.fn();
@@ -11,6 +23,12 @@ describe('Home page', () => {
     fetchMock.mockReset();
     global.fetch = fetchMock as unknown as typeof fetch;
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Setup navigation mocks
+    (useRouter as jest.Mock).mockReturnValue(mockRouter);
+    (useSearchParams as jest.Mock).mockReturnValue(mockSearchParams);
+    mockSearchParams.get.mockReturnValue(null);
+    mockRouter.replace.mockClear();
   });
 
   afterEach(() => {
