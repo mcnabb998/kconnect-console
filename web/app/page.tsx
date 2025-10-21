@@ -32,7 +32,7 @@ interface ConnectorDetails {
   };
   plugin: string;
   topics: string;
-  updated: string | null;
+  workerId: string | null;
 }
 
 const connectorsEndpoint = buildApiUrl('/connectors');
@@ -166,7 +166,7 @@ function ConnectorListPage() {
             },
             plugin,
             topics: extractTopics(configData?.config),
-            updated: statusData?.connector?.worker_id ?? null,
+            workerId: statusData?.connector?.worker_id ?? null,
           } satisfies ConnectorDetails;
         },
         {
@@ -201,7 +201,7 @@ function ConnectorListPage() {
           },
           plugin: '—',
           topics: '—',
-          updated: null,
+          workerId: null,
         } satisfies ConnectorDetails;
       });
 
@@ -652,7 +652,7 @@ function ConnectorListPage() {
                     Topic(s)
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                    Updated
+                    Worker ID
                   </th>
                   <th scope="col" className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">
                     Actions
@@ -698,7 +698,7 @@ function ConnectorListPage() {
                         {connector.topics}
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500">
-                        {connector.updated ?? '—'}
+                        {connector.workerId ?? '—'}
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-right text-sm">
                         <div className="flex items-center justify-end gap-2">
