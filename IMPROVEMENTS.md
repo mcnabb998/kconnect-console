@@ -1,7 +1,8 @@
 # kconnect-console Improvements Tracker
 
 **Last Updated:** 2025-10-20
-**Status:** Planning Phase
+**Status:** Active Development - Sprint 1 (UX Improvements)
+**Progress:** 4/28 improvements completed (14%)
 
 ---
 
@@ -11,6 +12,12 @@
 - [ ] **TBD** - Issues found during current state analysis
 
 ### 🟠 HIGH PRIORITY - Next Sprint (Major UX Issues)
+
+**📸 Issues Identified from UI Screenshots (2025-10-20):**
+- Cluster page: "Trigger rebalance (unavailable)" button with no explanation
+- Cluster page: Large "NOT AVAILABLE" badges with no helpful context
+- Transformations tab: Save Changes/Reset buttons with no loading state
+- Multiple pages: Refresh buttons with no loading feedback
 
 #### Auto-Refresh & Real-Time Updates
 - [x] **[#1] Auto-refresh on connector list page** - 2 hours ✅ COMPLETED
@@ -28,11 +35,33 @@
   - **Impact:** Users can't monitor connector recovery
 
 #### Loading & Feedback States
-- [ ] **[#3] Loading states for action buttons** - 3 hours
-  - **File:** `web/app/page.tsx` (lines 535-558)
-  - **Issue:** Buttons disable but don't show which action is running
-  - **Fix:** Show spinner and "Pausing..." text per button
-  - **Impact:** Users don't know if click registered
+- [ ] **[#3] Loading states for action buttons** - 3 hours ⏳ IN PROGRESS
+  - **Files:**
+    - `web/app/page.tsx` - List page Refresh button
+    - `web/app/connectors/[name]/page.tsx` - Detail page action buttons
+    - `web/app/connectors/[name]/TransformationsTab.tsx` - Save Changes/Reset buttons
+    - `web/components/ConnectorBulkActions.tsx` - Bulk action buttons
+    - `web/app/cluster/page.tsx` - Cluster page Refresh button
+  - **Issue:** Multiple critical UX problems identified from screenshots:
+    - Refresh button shows no loading state (cluster & list pages)
+    - Action buttons (Pause/Resume/Restart) disable but show no progress
+    - Save Changes/Reset in transformations have no loading feedback
+    - Bulk actions show "Pausing..." but no spinner
+    - Users repeatedly click buttons unsure if action registered
+  - **Fix:** Comprehensive loading state implementation:
+    - Create reusable `LoadingButton` component with spinner
+    - Show action-specific text ("Saving...", "Pausing...", "Refreshing...")
+    - Disable button during action
+    - Add spinner icon (rotating circle)
+    - Gray out button while loading
+  - **Components to Create:**
+    - `web/components/LoadingButton.tsx` - Reusable button with loading state
+    - Props: `loading`, `loadingText`, `children`, `onClick`, `variant`
+  - **Impact:** CRITICAL - Users can't tell if their actions are being processed
+  - **Screenshots Evidence:** Cluster page shows multiple disabled buttons with no context
+  - **Estimated Tests:** ~15 tests
+    - LoadingButton component tests (8 tests)
+    - Integration tests for each page (7 tests)
 
 - [x] **[#4] Success toast notifications** - 2 hours ✅ COMPLETED
   - **Files:** `web/hooks/useToast.ts`, `web/components/Toast.tsx`, `web/components/ToastContainer.tsx`
@@ -131,6 +160,21 @@
   - **Fix:** Disable with tooltip explaining missing plugin
   - **Impact:** Less confusing
 
+- [ ] **[#29] Disabled button tooltips** - 2 hours
+  - **Files:**
+    - `web/app/cluster/page.tsx` - "Trigger rebalance (unavailable)" button
+    - `web/app/cluster/page.tsx` - "Restart all connectors (unavailable)" button
+  - **Issue:** Buttons show "(unavailable)" but don't explain WHY
+  - **Fix:** Add tooltip component explaining requirements:
+    - "Trigger rebalance" → "Requires Kafka Connect 2.8+ with rebalance API support"
+    - "Restart all connections" → "Feature disabled for safety. Use bulk actions on Connectors page"
+    - "NOT AVAILABLE" badges → Tooltip with version requirements
+  - **Components to Create:**
+    - `web/components/Tooltip.tsx` - Reusable tooltip component
+  - **Impact:** Users understand why features are unavailable
+  - **Screenshots Evidence:** Cluster page shows confusing disabled states
+  - **Estimated Tests:** ~6 tests
+
 ### 🟢 LOW PRIORITY - Backlog (Nice-to-Have)
 
 #### Advanced Features
@@ -194,6 +238,81 @@
   - **Issue:** No visual preview
   - **Fix:** Add screenshots and video
   - **Impact:** Marketing/adoption
+
+---
+
+## 🗺️ CURRENT SPRINT PLAN - Sprint 1: UX Improvements
+
+**Sprint Goal:** Eliminate major UX friction points identified from user screenshots
+
+**Duration:** 3-5 days
+**Branch:** `feature/ux-improvements`
+**Status:** IN PROGRESS
+
+### ✅ Completed (4/7 tasks)
+1. ✅ **Toast Notification System** - 2 hours
+   - Commits: 89f2fed, 34739ef, add95a0
+   - Tests: 26/26 passing
+   - Impact: Users get immediate feedback for all actions
+
+2. ✅ **Auto-refresh on List Page** - 2 hours
+   - Commit: f3b1802
+   - Tests: 11/11 passing
+   - Impact: Users see real-time status updates
+
+3. ✅ **Pagination** - 6 hours
+   - Commit: 14c2096
+   - Tests: 12/12 passing
+   - Impact: Handles 100+ connectors without freezing
+
+4. ✅ **Request Batching** - 6 hours
+   - Commit: a066e35
+   - Tests: 18/18 passing
+   - Impact: Prevents browser overload
+
+### ⏳ In Progress (1/7 tasks)
+5. ⏳ **Loading States for Action Buttons** - 3 hours (CURRENT TASK)
+   - **Plan:**
+     - Step 1: Create `LoadingButton` component (30 min)
+     - Step 2: Add tests for `LoadingButton` (30 min)
+     - Step 3: Update list page Refresh button (15 min)
+     - Step 4: Update detail page action buttons (30 min)
+     - Step 5: Update transformations Save/Reset buttons (30 min)
+     - Step 6: Update cluster page Refresh button (15 min)
+     - Step 7: Integration tests (30 min)
+   - **Files to Create:**
+     - `web/components/LoadingButton.tsx`
+     - `web/__tests__/LoadingButton.test.tsx`
+   - **Files to Modify:**
+     - `web/app/page.tsx`
+     - `web/app/connectors/[name]/page.tsx`
+     - `web/app/connectors/[name]/TransformationsTab.tsx`
+     - `web/app/cluster/page.tsx`
+   - **Expected Outcome:** All action buttons show clear loading state with spinner
+
+### 📋 Remaining (2/7 tasks)
+6. 📋 **Auto-refresh on Detail Page** - 2 hours
+   - **Plan:** Copy pattern from list page implementation
+   - **Impact:** Users can monitor connector recovery in real-time
+
+7. 📋 **Disabled Button Tooltips** - 2 hours
+   - **Plan:** Create Tooltip component, add to unavailable features
+   - **Impact:** Users understand why features are disabled
+
+### 🎯 Sprint Success Criteria
+- [ ] All action buttons show loading state with spinner
+- [ ] Toast notifications work on all pages
+- [ ] Detail page has auto-refresh toggle
+- [ ] Disabled buttons have explanatory tooltips
+- [ ] All tests passing (target: 130+ tests)
+- [ ] ESLint + TypeScript checks pass
+- [ ] Production build succeeds
+
+### 📊 Progress Tracking
+- **Total Time Estimated:** 17 hours
+- **Time Spent:** 10 hours
+- **Time Remaining:** 7 hours
+- **Completion:** 57% (4/7 tasks)
 
 ---
 
