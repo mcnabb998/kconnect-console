@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { fetchClusterInfo, fetchConnectorPlugins, fetchSummary } from '@/lib/api';
 import Cards from '@/components/settings/Cards';
 import PluginsTable from '@/components/settings/PluginsTable';
+import { ErrorDisplay } from '@/components/ErrorDisplay';
 
 interface ClusterInfo {
   version: string;
@@ -36,14 +37,12 @@ export default function SettingsPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [plugins, setPlugins] = useState<ConnectorPlugin[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [errorType, setErrorType] = useState<Error | null>(null);
+  const [error, setError] = useState<Error | null>(null);
 
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
-      setErrorType(null);
 
       if (activeTab === 'overview') {
         const summaryData = await fetchSummary('default');
@@ -54,8 +53,7 @@ export default function SettingsPage() {
       }
     } catch (err) {
       console.error('Failed to load settings data:', err);
-      setErrorType(err instanceof Error ? err : null);
-      setError(err && typeof err === 'object' && 'message' in err ? String(err.message) : String(err));
+      setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setLoading(false);
     }
@@ -83,56 +81,14 @@ export default function SettingsPage() {
   }
 
   if (error) {
-    // Check if this is a proxy connectivity error
-    // TypeError is the standard browser error for network failures
-    const isProxyError =
-      (errorType instanceof TypeError) ||
-      error.includes('Failed to fetch') ||
-      error.includes('Network error') ||
-      error.includes('fetch failed') ||
-      error.includes('ECONNREFUSED');
-
     return (
       <div className="p-6">
         <h1 className="text-2xl font-bold mb-6">Settings</h1>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <h2 className="text-red-800 font-semibold text-lg mb-3">
-            {isProxyError ? 'Cannot Connect to Proxy Service' : 'Error Loading Settings'}
-          </h2>
-          <p className="text-red-700 mb-4">{error}</p>
-
-          {isProxyError && (
-            <div className="mt-4 space-y-3 text-sm">
-              <p className="text-red-900 font-medium">The proxy service is not running or not accessible.</p>
-              <div className="bg-white rounded p-4 border border-red-200">
-                <p className="font-semibold text-gray-900 mb-2">To start the proxy service:</p>
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-gray-700 mb-1"><strong>Option 1:</strong> Using Docker Compose</p>
-                    <pre className="bg-gray-900 text-gray-100 px-3 py-2 rounded font-mono text-xs m-0" role="code" aria-label="Docker Compose command">
-                      <code>cd compose && docker compose up -d</code>
-                    </pre>
-                  </div>
-                  <div>
-                    <p className="text-gray-700 mb-1"><strong>Option 2:</strong> Using Makefile</p>
-                    <pre className="bg-gray-900 text-gray-100 px-3 py-2 rounded font-mono text-xs m-0" role="code" aria-label="Makefile command">
-                      <code>make up</code>
-                    </pre>
-                  </div>
-                </div>
-                <p className="text-gray-600 mt-3 text-xs">
-                  The proxy service should be accessible at: <strong className="text-gray-900">http://localhost:8080</strong>
-                </p>
-              </div>
-              <button
-                onClick={() => loadData()}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-              >
-                Retry Connection
-              </button>
-            </div>
-          )}
-        </div>
+        <ErrorDisplay
+          error={error}
+          onRetry={loadData}
+          context={`Loading settings (${activeTab} tab)`}
+        />
       </div>
     );
   }

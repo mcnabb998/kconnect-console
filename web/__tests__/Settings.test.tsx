@@ -134,8 +134,9 @@ describe('Settings Page', () => {
       await user.click(pluginsTab);
 
       await waitFor(() => {
-        expect(screen.getByText('Cannot Connect to Proxy Service')).toBeInTheDocument();
-        expect(screen.getByText('Failed to fetch plugins')).toBeInTheDocument();
+        // ErrorDisplay component shows the error and retry button
+        expect(screen.getByText('Service not reachable')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
       });
     });
   });
