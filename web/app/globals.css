@@ -1,34 +1,37 @@
 @import "tailwindcss";
+@import "../ui/theme.css";
 
-@theme {
-  --color-*: initial;
-  --dark-mode: class;
+@theme inline {
+  --font-sans: var(--font-geist-sans, "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+  --font-mono: var(--font-geist-mono, "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --radius-card: 0.75rem;
+  --radius-default: 0.75rem;
+  --radius-pill: 9999px;
 }
 
 :root {
-  --background: #f9fafb;
-  --foreground: #111827;
-}
-
-.dark {
-  --background: #0f172a;
-  --foreground: #f1f5f9;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --radius-card: 1rem;
-  --radius-panel: 0.75rem;
-  --radius-pill: 9999px;
-  --shadow-card: 0 28px 60px -35px rgba(15, 23, 42, 0.45);
-  --shadow-soft: 0 20px 45px -30px rgba(15, 23, 42, 0.35);
+  font-family: var(--font-sans);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input,
+textarea,
+select {
+  border-radius: var(--radius-default);
+}
+
+* {
+  border-color: var(--border-subtle);
 }

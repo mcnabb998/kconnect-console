@@ -18,18 +18,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="bg-gray-50 text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100">
+      <body className="bg-[color:var(--background)] text-[color:var(--foreground)] antialiased">
         <ThemeProvider>
           <ErrorBoundary>
             <MonitoringSummaryProvider>
               <div className="flex min-h-screen">
-                <aside className="w-72 shrink-0 border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+                <aside className="w-72 shrink-0 border-r border-[color:var(--border-muted)] bg-[color:var(--surface)]">
                   <SectionErrorBoundary section="Navigation">
                     <Navigation />
                   </SectionErrorBoundary>
                 </aside>
-                <main className="flex flex-1 justify-center">
-                  <div className="flex w-full max-w-[1200px] flex-col gap-6 px-8 py-8">
+                <main className="flex flex-1 justify-center bg-[color:var(--background)]">
+                  <div className="flex w-full max-w-[1200px] flex-col gap-6 px-6 py-8">
                     <SectionErrorBoundary section="Page Content">
                       {children}
                     </SectionErrorBoundary>
