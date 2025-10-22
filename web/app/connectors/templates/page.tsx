@@ -360,24 +360,31 @@ export default function NewConnectorPage() {
                 <div
                   key={template.id}
                   onClick={() => handleTemplateSelect(template)}
-                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                  title={
+                    !template.available
+                      ? `Plugin ${template.connectorClass} is not installed. Install the connector plugin to enable this template.`
+                      : `Click to configure ${template.name}`
+                  }
+                  className={`p-4 border rounded-lg transition-colors ${
                     template.available
-                      ? 'border-gray-200 hover:border-blue-500 hover:bg-blue-50'
-                      : 'border-gray-100 bg-gray-50 cursor-not-allowed opacity-75'
+                      ? 'border-gray-200 hover:border-blue-500 hover:bg-blue-50 cursor-pointer'
+                      : 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-60 pointer-events-none'
                   }`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center space-x-2">
-                      <span className="text-2xl">{template.icon}</span>
-                      <h3 className="font-medium text-gray-900">{template.name}</h3>
+                      <span className={`text-2xl ${!template.available ? 'opacity-50' : ''}`}>{template.icon}</span>
+                      <h3 className={`font-medium ${template.available ? 'text-gray-900' : 'text-gray-500 line-through'}`}>
+                        {template.name}
+                      </h3>
                     </div>
                     <div className="flex flex-col items-end space-y-1">
-                      <span className={`text-xs px-2 py-1 rounded-full ${
+                      <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
                         template.available
                           ? 'bg-green-100 text-green-800'
                           : 'bg-red-100 text-red-800'
                       }`}>
-                        {template.available ? '🟢 Available' : '🔴 Missing plugin'}
+                        {template.available ? '🟢 Available' : '🔴 Unavailable'}
                       </span>
                       <span className={`text-xs px-2 py-1 rounded-full ${
                         template.type === 'source'
@@ -388,10 +395,27 @@ export default function NewConnectorPage() {
                       </span>
                     </div>
                   </div>
-                  <p className="text-sm text-gray-600 mb-3">{template.description}</p>
+                  <p className={`text-sm mb-3 ${template.available ? 'text-gray-600' : 'text-gray-500'}`}>
+                    {template.description}
+                  </p>
                   {!template.available && (
-                    <div className="text-xs text-red-600 bg-red-50 p-2 rounded">
-                      💡 Install this connector JAR on the Kafka Connect worker to enable deployment
+                    <div className="text-xs text-red-700 bg-red-50 p-2 rounded border border-red-200">
+                      <div className="font-semibold mb-1">⚠️ Plugin Not Installed</div>
+                      <div className="mb-1">Install connector plugin to enable this template:</div>
+                      <div className="font-mono text-[10px] bg-white px-1 py-0.5 rounded border border-red-200 mb-1 break-all">
+                        {template.connectorClass}
+                      </div>
+                      {template.documentation && (
+                        <a
+                          href={template.documentation}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-blue-600 hover:text-blue-800 underline pointer-events-auto"
+                        >
+                          📖 Installation Guide
+                        </a>
+                      )}
                     </div>
                   )}
                 </div>
