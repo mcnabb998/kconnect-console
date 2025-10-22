@@ -15,8 +15,8 @@ export default function Tooltip({
 }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [actualPosition, setActualPosition] = useState(position);
-  const triggerRef = useRef<HTMLDivElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<React.ElementRef<'div'>>(null);
+  const tooltipRef = useRef<React.ElementRef<'div'>>(null);
 
   useEffect(() => {
     if (isVisible && triggerRef.current && tooltipRef.current) {
