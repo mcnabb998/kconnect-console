@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { LoadingButton } from '@/components/LoadingButton';
 import { SkeletonBadge, SkeletonCard, SkeletonLine } from '@/components/Skeleton';
 import { ToastContainer } from '@/components/ToastContainer';
+import { ErrorDisplay } from '@/components/ErrorDisplay';
 import { SectionErrorBoundary } from '../../components/SectionErrorBoundary';
 import TransformationsTab from './TransformationsTab';
 import type { ConnectorGetResponse } from '@/types/connect';
@@ -40,7 +41,7 @@ export default function ConnectorDetail() {
   const [status, setStatus] = useState<ConnectorStatus | null>(null);
   const [config, setConfig] = useState<ConnectorGetResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'transformations'>('overview');
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -71,7 +72,7 @@ export default function ConnectorDetail() {
       setStatus(statusData);
       setConfig(configData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       if (!silent) {
         setLoading(false);
@@ -162,9 +163,9 @@ export default function ConnectorDetail() {
         setActionLoading(null);
       }, 1000);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      setError(errorMessage);
-      showErrorToast(errorMessage);
+      const error = err instanceof Error ? err : new Error(String(err));
+      setError(error);
+      showErrorToast(error.message);
       setActionLoading(null);
     }
   };
@@ -191,9 +192,9 @@ export default function ConnectorDetail() {
       success(`Connector "${name}" deleted successfully`);
       router.push('/');
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      setError(errorMessage);
-      showErrorToast(errorMessage);
+      const error = err instanceof Error ? err : new Error(String(err));
+      setError(error);
+      showErrorToast(error.message);
       setActionLoading(null);
     }
   };
@@ -351,10 +352,11 @@ export default function ConnectorDetail() {
           {activeTab === 'overview' ? (
             <div className="space-y-6">
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                  <p className="font-bold">Error</p>
-                  <p>{error}</p>
-                </div>
+                <ErrorDisplay
+                  error={error}
+                  onRetry={() => fetchConnectorDetails()}
+                  context={`Loading connector "${name}"`}
+                />
               )}
 
               <SectionErrorBoundary section="Action Buttons">

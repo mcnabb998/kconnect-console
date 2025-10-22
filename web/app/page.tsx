@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'rea
 import { useSearchParams, useRouter } from 'next/navigation';
 
 import { ConnectorBulkActions } from '@/components/ConnectorBulkActions';
+import { ErrorDisplay } from '@/components/ErrorDisplay';
 import { LoadingButton } from '@/components/LoadingButton';
 import { SkeletonCard, SkeletonLine, SkeletonSurface } from '@/components/Skeleton';
 import { ToastContainer } from '@/components/ToastContainer';
@@ -96,7 +97,7 @@ function ConnectorListPage() {
   const [connectors, setConnectors] = useState<ConnectorDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState<{ current: number; total: number } | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -207,7 +208,7 @@ function ConnectorListPage() {
 
       setConnectors(detailedConnectors);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setLoading(false);
       setLoadingProgress(null);
@@ -567,9 +568,13 @@ function ConnectorListPage() {
       )}
 
       {error && (
-        <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-6 dark:border-rose-900/50 dark:bg-rose-900/20">
-          <h2 className="text-lg font-semibold text-rose-700 dark:text-rose-400">Error</h2>
-          <p className="mt-2 text-sm text-rose-600 dark:text-rose-300">{error}</p>
+        <div className="mt-6">
+          <ErrorDisplay
+            error={error}
+            onRetry={fetchConnectors}
+            context="Loading connectors"
+            className="mt-6"
+          />
         </div>
       )}
 

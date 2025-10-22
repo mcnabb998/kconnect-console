@@ -93,7 +93,9 @@ describe('Home page', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to fetch connectors')).toBeInTheDocument();
+      // ErrorDisplay component shows the error and retry button
+      expect(screen.getByText('Service not reachable')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
     });
 
     fetchMock.mockResolvedValueOnce({
@@ -102,7 +104,7 @@ describe('Home page', () => {
     } as Response);
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+      fireEvent.click(screen.getByRole('button', { name: /retry/i }));
     });
 
     await waitFor(() => {
