@@ -299,3 +299,46 @@ export function extractValidationErrors(validation: ValidationResponse): Record<
   
   return errors;
 }
+
+// Audit Log Types and Functions
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  action: string;
+  connectorName: string;
+  user?: string;
+  sourceIp: string;
+  changes?: Record<string, any>;
+  status: string;
+  errorMessage?: string;
+}
+
+export interface AuditLogResponse {
+  entries: AuditLogEntry[];
+  total: number;
+}
+
+export interface AuditLogFilters {
+  connector?: string;
+  action?: string;
+  status?: string;
+  limit?: number;
+  since?: string;
+  until?: string;
+}
+
+export async function fetchAuditLogs(filters?: AuditLogFilters): Promise<AuditLogResponse> {
+  const params = new URLSearchParams();
+  
+  if (filters?.connector) params.append('connector', filters.connector);
+  if (filters?.action) params.append('action', filters.action);
+  if (filters?.status) params.append('status', filters.status);
+  if (filters?.limit) params.append('limit', filters.limit.toString());
+  if (filters?.since) params.append('since', filters.since);
+  if (filters?.until) params.append('until', filters.until);
+  
+  const queryString = params.toString();
+  const endpoint = `/audit-logs${queryString ? '?' + queryString : ''}`;
+  
+  return apiRequest<AuditLogResponse>(endpoint);
+}
