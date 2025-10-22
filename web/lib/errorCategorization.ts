@@ -146,7 +146,8 @@ export function categorizeNetworkError(error: unknown, url?: string): Categorize
   }
 
   // If we have an HTTP error status in the message, categorize as HTTP_ERROR
-  if (message.includes('http') && /\d{3}/.test(message)) {
+  // Use specific regex to match only valid HTTP status codes (100-599)
+  if (message.includes('http') && /\b[1-5]\d{2}\b/.test(message)) {
     return {
       type: NetworkErrorType.HTTP_ERROR,
       message: err.message,
@@ -210,9 +211,10 @@ function getErrorIcon(type: NetworkErrorType): string {
       return '⚠️';
     case NetworkErrorType.UNKNOWN:
       return '❓';
-    default:
-      return '❌';
   }
+  // Exhaustiveness check: if a new NetworkErrorType is added, this will cause a compile-time error
+  const _exhaustive: never = type;
+  return _exhaustive;
 }
 
 /**

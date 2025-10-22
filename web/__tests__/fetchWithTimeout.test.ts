@@ -135,12 +135,9 @@ describe('fetchWithTimeout with error categorization', () => {
       const originalError = new Error('ECONNREFUSED');
       fetchMock.mockRejectedValue(originalError);
 
-      try {
-        await fetchWithTimeout('http://example.com');
-        throw new Error('Should have thrown');
-      } catch (error: any) {
-        expect(error.originalError).toBe(originalError);
-      }
+      await expect(fetchWithTimeout('http://example.com')).rejects.toMatchObject({
+        originalError,
+      });
     });
 
     it('should clear timeout on successful response', async () => {
@@ -159,13 +156,12 @@ describe('fetchWithTimeout with error categorization', () => {
       timeoutError.name = 'AbortError';
       fetchMock.mockRejectedValue(timeoutError);
 
-      try {
-        await fetchWithTimeout('http://example.com', { timeout: 100 });
-        throw new Error('Should have thrown');
-      } catch (error: any) {
-        expect(error.message).toContain('100ms');
-        expect(error.type).toBe(NetworkErrorType.TIMEOUT);
-      }
+      await expect(fetchWithTimeout('http://example.com', { timeout: 100 }))
+        .rejects
+        .toMatchObject({
+          message: expect.stringContaining('100ms'),
+          type: NetworkErrorType.TIMEOUT,
+        });
     });
   });
 
@@ -248,7 +244,7 @@ describe('fetchWithTimeout with error categorization', () => {
 
       try {
         await fetchWithTimeout('http://example.com');
-        throw new Error('Should have thrown');
+        expect(true).toBe(false); // Should have thrown
       } catch (err) {
         expect(isCategorizedError(err)).toBe(true);
         if (isCategorizedError(err)) {
@@ -282,11 +278,16 @@ describe('fetchWithTimeout with error categorization', () => {
       timeoutError.name = 'AbortError';
       fetchMock.mockRejectedValue(timeoutError);
 
+      await expect(fetchWithTimeout('http://example.com:8080/api/test', { timeout: 2000 }))
+        .rejects
+        .toMatchObject({
+          message: expect.stringContaining('http://example.com:8080/api/test'),
+        });
+      
+      // Also check the timeout duration in the message
       try {
         await fetchWithTimeout('http://example.com:8080/api/test', { timeout: 2000 });
-        throw new Error('Should have thrown');
       } catch (error: any) {
-        expect(error.message).toContain('http://example.com:8080/api/test');
         expect(error.message).toContain('2000ms');
       }
     });
@@ -295,15 +296,12 @@ describe('fetchWithTimeout with error categorization', () => {
       const error = new Error('ECONNREFUSED');
       fetchMock.mockRejectedValue(error);
 
-      try {
-        await fetchWithTimeout('http://example.com');
-        throw new Error('Should have thrown');
-      } catch (err: any) {
-        expect(err.categorized).toBeDefined();
-        expect(err.type).toBe(NetworkErrorType.CONNECTION_REFUSED);
-        expect(err.troubleshooting).toBeInstanceOf(Array);
-        expect(err.originalError).toBe(error);
-      }
+      await expect(fetchWithTimeout('http://example.com')).rejects.toMatchObject({
+        categorized: expect.anything(),
+        type: NetworkErrorType.CONNECTION_REFUSED,
+        troubleshooting: expect.any(Array),
+        originalError: error,
+      });
     });
   });
 

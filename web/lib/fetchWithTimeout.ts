@@ -32,14 +32,15 @@ export async function fetchWithTimeout(
     try {
       return await fetch(url, { signal, ...fetchOptions });
     } catch (error) {
-      // Categorize and re-throw with detailed information
+      // Preserve AbortError for user-initiated cancellations (e.g., component unmount)
+      // This allows consumers to distinguish deliberate cancellation from actual failures
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw error; // Re-throw original AbortError without categorization
+      }
+      
+      // Categorize and re-throw with detailed information for actual errors
       const categorized = categorizeNetworkError(error, url);
-      throw Object.assign(new Error(categorized.message), {
-        categorized,
-        type: categorized.type,
-        troubleshooting: categorized.troubleshooting,
-        originalError: categorized.originalError,
-      });
+      throw createCategorizedError(categorized);
     }
   }
 
@@ -59,18 +60,13 @@ export async function fetchWithTimeout(
     // Categorize the error and provide detailed information
     const categorized = categorizeNetworkError(error, url);
     
-    // For timeout errors, provide additional context
+    // For timeout errors from our controller, provide additional context
     if (error instanceof Error && error.name === 'AbortError') {
       categorized.message = `Request timeout: The request to ${url} took longer than ${timeout}ms`;
     }
 
-    // Throw an enhanced error with categorization data
-    throw Object.assign(new Error(categorized.message), {
-      categorized,
-      type: categorized.type,
-      troubleshooting: categorized.troubleshooting,
-      originalError: categorized.originalError,
-    });
+    // Throw an enhanced error with categorization data using helper
+    throw createCategorizedError(categorized);
   }
 }
 
@@ -98,14 +94,13 @@ export async function fetchJsonWithTimeout<T = any>(
       new Error(`HTTP ${response.status}: ${response.statusText}`),
       url
     );
-    throw Object.assign(new Error(categorized.message), {
-      categorized,
-      type: categorized.type,
-      troubleshooting: categorized.troubleshooting,
-      originalError: categorized.originalError,
-      status: response.status,
-      statusText: response.statusText,
-    });
+    const error = createCategorizedError(categorized) as CategorizedErrorObject & {
+      status: number;
+      statusText: string;
+    };
+    error.status = response.status;
+    error.statusText = response.statusText;
+    throw error;
   }
 
   return response.json();
@@ -130,6 +125,20 @@ export function isCategorizedError(error: unknown): error is CategorizedErrorObj
     'categorized' in error &&
     typeof (error as any).categorized === 'object'
   );
+}
+
+/**
+ * Helper function to create an enhanced error with categorization metadata
+ * Reduces duplication of Object.assign pattern throughout the codebase
+ * @public Exported for use in other modules (e.g., api.ts)
+ */
+export function createCategorizedError(categorized: CategorizedError): CategorizedErrorObject {
+  return Object.assign(new Error(categorized.message), {
+    categorized,
+    type: categorized.type,
+    troubleshooting: categorized.troubleshooting,
+    originalError: categorized.originalError,
+  }) as CategorizedErrorObject;
 }
 
 // Re-export types and functions for convenience
