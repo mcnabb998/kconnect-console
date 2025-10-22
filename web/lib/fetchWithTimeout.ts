@@ -1,9 +1,12 @@
 /**
- * Fetch wrapper with timeout support
+ * Fetch wrapper with timeout support and error categorization
  *
  * Prevents requests from hanging indefinitely by automatically aborting
- * after a specified timeout period.
+ * after a specified timeout period. Provides detailed error categorization
+ * for better troubleshooting.
  */
+
+import { categorizeNetworkError, CategorizedError } from './errorCategorization';
 
 const DEFAULT_TIMEOUT_MS = 30000; // 30 seconds
 
@@ -12,11 +15,11 @@ export interface FetchWithTimeoutOptions extends RequestInit {
 }
 
 /**
- * Fetch with automatic timeout
+ * Fetch with automatic timeout and error categorization
  * @param url - URL to fetch
  * @param options - Fetch options with optional timeout
  * @returns Promise resolving to Response
- * @throws Error if request times out or network error occurs
+ * @throws CategorizedError with detailed troubleshooting information
  */
 export async function fetchWithTimeout(
   url: string,
@@ -26,7 +29,18 @@ export async function fetchWithTimeout(
 
   // If user provided their own signal, use it; otherwise create timeout controller
   if (signal) {
-    return fetch(url, { signal, ...fetchOptions });
+    try {
+      return await fetch(url, { signal, ...fetchOptions });
+    } catch (error) {
+      // Categorize and re-throw with detailed information
+      const categorized = categorizeNetworkError(error, url);
+      throw Object.assign(new Error(categorized.message), {
+        categorized,
+        type: categorized.type,
+        troubleshooting: categorized.troubleshooting,
+        originalError: categorized.originalError,
+      });
+    }
   }
 
   const controller = new AbortController();
@@ -42,23 +56,30 @@ export async function fetchWithTimeout(
   } catch (error) {
     clearTimeout(timeoutId);
 
-    // Provide helpful timeout error message
+    // Categorize the error and provide detailed information
+    const categorized = categorizeNetworkError(error, url);
+    
+    // For timeout errors, provide additional context
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error(
-        `Request timeout: The request to ${url} took longer than ${timeout}ms. ` +
-        `This may indicate the server is slow or unresponsive.`
-      );
+      categorized.message = `Request timeout: The request to ${url} took longer than ${timeout}ms`;
     }
 
-    throw error;
+    // Throw an enhanced error with categorization data
+    throw Object.assign(new Error(categorized.message), {
+      categorized,
+      type: categorized.type,
+      troubleshooting: categorized.troubleshooting,
+      originalError: categorized.originalError,
+    });
   }
 }
 
 /**
- * Fetch JSON with automatic timeout
+ * Fetch JSON with automatic timeout and error categorization
  * @param url - URL to fetch
  * @param options - Fetch options with optional timeout
  * @returns Promise resolving to parsed JSON
+ * @throws CategorizedError with detailed troubleshooting information
  */
 export async function fetchJsonWithTimeout<T = any>(
   url: string,
@@ -73,8 +94,35 @@ export async function fetchJsonWithTimeout<T = any>(
   });
 
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    const categorized = categorizeNetworkError(
+      new Error(`HTTP ${response.status}: ${response.statusText}`),
+      url
+    );
+    throw Object.assign(new Error(categorized.message), {
+      categorized,
+      type: categorized.type,
+      troubleshooting: categorized.troubleshooting,
+      originalError: categorized.originalError,
+      status: response.status,
+      statusText: response.statusText,
+    });
   }
 
   return response.json();
 }
+
+/**
+ * Type guard to check if an error has categorization information
+ */
+export function isCategorizedError(error: unknown): error is Error & { categorized: CategorizedError } {
+  return (
+    error instanceof Error &&
+    'categorized' in error &&
+    typeof (error as any).categorized === 'object'
+  );
+}
+
+// Re-export types and functions for convenience
+export { categorizeNetworkError, NetworkErrorType, formatErrorMessage, getErrorSummary } from './errorCategorization';
+export type { CategorizedError } from './errorCategorization';
+

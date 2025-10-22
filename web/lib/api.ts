@@ -1,5 +1,7 @@
 // API utilities for Kafka Connect operations
 import { getProxyUrl, API_CONFIG } from './config';
+import { categorizeNetworkError, NetworkErrorType } from './errorCategorization';
+import type { CategorizedError } from './errorCategorization';
 
 const PROXY = getProxyUrl();
 const CLUSTER = API_CONFIG.clusterId;
@@ -125,12 +127,29 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
       throw error;
     }
 
-    // Handle timeout errors
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error(`Request timeout: The request to ${endpoint} took longer than ${timeoutMs}ms`);
+    // Categorize network errors for better troubleshooting
+    const categorized = categorizeNetworkError(error, url);
+    
+    // Handle timeout errors with additional context
+    if (categorized.type === NetworkErrorType.TIMEOUT) {
+      const enhancedError = new Error(
+        `Request timeout: The request to ${endpoint} took longer than ${timeoutMs}ms`
+      );
+      throw Object.assign(enhancedError, {
+        categorized,
+        type: categorized.type,
+        troubleshooting: categorized.troubleshooting,
+        originalError: categorized.originalError,
+      });
     }
 
-    throw new Error(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    // Throw categorized error with enhanced information
+    throw Object.assign(new Error(categorized.message), {
+      categorized,
+      type: categorized.type,
+      troubleshooting: categorized.troubleshooting,
+      originalError: categorized.originalError,
+    });
   }
 }
 
