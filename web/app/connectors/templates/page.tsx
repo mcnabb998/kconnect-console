@@ -223,10 +223,10 @@ export default function NewConnectorPage() {
     if (!isValid) {
       // Set appropriate error message based on whether we have validation errors
       if (Object.keys(validationErrors).length > 0) {
-        setError('Configuration validation failed. Please fix the validation errors below before creating the connector.');
+        setError(new Error('Configuration validation failed. Please fix the validation errors below before creating the connector.'));
       } else if (!error) {
         // Only set generic error if there isn't already a more specific error from validateConfiguration
-        setError('Configuration validation failed. Please review your configuration and try again.');
+        setError(new Error('Configuration validation failed. Please review your configuration and try again.'));
       }
       // Scroll to top to show errors
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -239,10 +239,8 @@ export default function NewConnectorPage() {
       await createConnector(connectorName, configValues);
       router.push(`/connectors/${encodeURIComponent(connectorName)}?created=true`);
     } catch (error) {
-      const message = error instanceof KafkaConnectApiError
-        ? `Creation Failed: ${error.message}`
-        : `Failed to create connector: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      setError(message);
+      const err = error instanceof Error ? error : new Error(String(error));
+      setError(err);
     } finally {
       setLoading(false);
     }

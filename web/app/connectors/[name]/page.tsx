@@ -163,9 +163,9 @@ export default function ConnectorDetail() {
         setActionLoading(null);
       }, 1000);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      setError(errorMessage);
-      showErrorToast(errorMessage);
+      const error = err instanceof Error ? err : new Error(String(err));
+      setError(error);
+      showErrorToast(error.message);
       setActionLoading(null);
     }
   };
@@ -192,9 +192,9 @@ export default function ConnectorDetail() {
       success(`Connector "${name}" deleted successfully`);
       router.push('/');
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      setError(errorMessage);
-      showErrorToast(errorMessage);
+      const error = err instanceof Error ? err : new Error(String(err));
+      setError(error);
+      showErrorToast(error.message);
       setActionLoading(null);
     }
   };

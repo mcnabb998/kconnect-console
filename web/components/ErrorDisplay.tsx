@@ -291,9 +291,14 @@ export function ErrorDisplay({
       .join('\n');
 
     try {
-      await navigator.clipboard.writeText(errorDetails);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      // Check if clipboard API is available (browser only)
+      // eslint-disable-next-line no-undef
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        // eslint-disable-next-line no-undef
+        await navigator.clipboard.writeText(errorDetails);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
     } catch (err) {
       console.error('Failed to copy error details:', err);
     }
