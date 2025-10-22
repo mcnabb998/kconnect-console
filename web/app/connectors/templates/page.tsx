@@ -184,9 +184,9 @@ export default function NewConnectorPage() {
 
       // Include connector name in validation
       const configToValidate = {
+        ...configValues,
         'connector.class': selectedPlugin,
         name: connectorName,
-        ...configValues,
       };
 
       logger.debug('Validating configuration:', { selectedPlugin, connectorName, configToValidate });
