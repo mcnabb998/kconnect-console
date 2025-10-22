@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -42,24 +42,17 @@ export default function ConnectorDetail() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'transformations'>('overview');
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [nextRefreshIn, setNextRefreshIn] = useState(10);
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    if (name) {
-      fetchConnectorDetails();
-
-      // Check if redirected from creation
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('created') === 'true') {
-        success(`Connector "${name}" created successfully`);
-        // Remove the query param from URL
-        router.replace(`/connectors/${name}`, undefined);
-      }
-    }
-  }, [name, router, success]);
-
-  const fetchConnectorDetails = async () => {
+  const fetchConnectorDetails = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      // Only show loading skeleton on initial load, not during auto-refresh
+      if (!silent) {
+        setLoading(true);
+      }
       setError(null);
 
       const [statusRes, configRes] = await Promise.all([
@@ -79,9 +72,72 @@ export default function ConnectorDetail() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
-  };
+  }, [name, cluster]);
+
+  useEffect(() => {
+    if (name) {
+      fetchConnectorDetails();
+
+      // Check if redirected from creation
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('created') === 'true') {
+        success(`Connector "${name}" created successfully`);
+        // Remove the query param from URL
+        router.replace(`/connectors/${name}`, undefined);
+      }
+    }
+  }, [name, router, success, fetchConnectorDetails]);
+
+  // Auto-refresh logic
+  useEffect(() => {
+    // Clear any existing intervals
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+
+    if (!autoRefresh || !name) {
+      setNextRefreshIn(10);
+      return;
+    }
+
+    // Reset countdown
+    setNextRefreshIn(10);
+
+    // Countdown timer (updates every second)
+    countdownIntervalRef.current = setInterval(() => {
+      setNextRefreshIn((prev) => {
+        if (prev <= 0) {
+          return 10; // Reset to 10 when it hits 0
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // Refresh timer (triggers every 10 seconds)
+    // Use silent=true to avoid remounting the UI during background refresh
+    refreshIntervalRef.current = setInterval(() => {
+      fetchConnectorDetails(true);
+    }, 10000);
+
+    // Cleanup on unmount or when autoRefresh changes
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
+    };
+  }, [autoRefresh, name, fetchConnectorDetails]);
 
   const handleAction = async (action: 'pause' | 'resume' | 'restart') => {
     try {
@@ -100,9 +156,9 @@ export default function ConnectorDetail() {
       // Show success toast
       success(`Connector ${action}d successfully`);
 
-      // Refresh details after action
+      // Refresh details after action (silent to avoid UI remount)
       setTimeout(() => {
-        fetchConnectorDetails();
+        fetchConnectorDetails(true);
         setActionLoading(null);
       }, 1000);
     } catch (err) {
@@ -247,11 +303,39 @@ export default function ConnectorDetail() {
                 </Link>
                 <h1 className="text-3xl font-bold text-gray-900">{name}</h1>
               </div>
-              {status && (
-                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStateColor(status.connector.state)}`}>
-                  {status.connector.state}
-                </span>
-              )}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAutoRefresh(!autoRefresh)}
+                  className={`inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                    autoRefresh
+                      ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 focus-visible:outline-emerald-500 dark:bg-emerald-900/50 dark:text-emerald-400 dark:hover:bg-emerald-900/70'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 focus-visible:outline-slate-500 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
+                  }`}
+                  aria-label={autoRefresh ? 'Disable auto-refresh' : 'Enable auto-refresh'}
+                >
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                  {autoRefresh ? `Auto (${nextRefreshIn}s)` : 'Auto: OFF'}
+                </button>
+                {status && (
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStateColor(status.connector.state)}`}>
+                    {status.connector.state}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </header>
@@ -378,7 +462,7 @@ export default function ConnectorDetail() {
                 initialConnector={config}
                 onConfigUpdated={(updated) => {
                   setConfig(updated);
-                  fetchConnectorDetails();
+                  fetchConnectorDetails(true);
                 }}
               />
             </SectionErrorBoundary>
