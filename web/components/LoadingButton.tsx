@@ -1,6 +1,5 @@
 import React from 'react';
 
-// eslint-disable-next-line no-undef
 export interface LoadingButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
   loadingText?: string;

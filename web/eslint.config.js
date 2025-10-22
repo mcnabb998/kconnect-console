@@ -39,12 +39,18 @@ module.exports = [
         ResponseType: 'readonly',
         HTMLInputElement: 'readonly',
         HTMLAnchorElement: 'readonly',
+        HTMLButtonElement: 'readonly',
+        HTMLDivElement: 'readonly',
         URLSearchParams: 'readonly',
         AbortController: 'readonly',
         AbortSignal: 'readonly',
         DOMException: 'readonly',
         Blob: 'readonly',
         FormData: 'readonly',
+        HTMLElement: 'readonly',
+        KeyboardEvent: 'readonly',
+        PointerEvent: 'readonly',
+        Node: 'readonly',
         
         // Node.js types
         NodeJS: 'readonly',

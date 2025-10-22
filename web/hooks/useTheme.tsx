@@ -58,6 +58,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } else {
       root.classList.remove('dark');
     }
+
+    root.dataset.theme = effectiveTheme;
+
+    return () => {
+      delete root.dataset.theme;
+    };
   }, [effectiveTheme]);
 
   const setTheme = (newTheme: Theme) => {

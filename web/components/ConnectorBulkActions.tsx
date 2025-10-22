@@ -10,6 +10,7 @@ interface ConnectorBulkActionsProps {
   onActionComplete?: () => void | Promise<void>;
   onSuccess?: (message: string) => void;
   onError?: (message: string) => void;
+  className?: string;
 }
 
 interface BulkSummary {
@@ -47,7 +48,8 @@ export function ConnectorBulkActions({
   onClearSelection,
   onActionComplete,
   onSuccess,
-  onError: onErrorCallback
+  onError: onErrorCallback,
+  className,
 }: ConnectorBulkActionsProps) {
   const [activeAction, setActiveAction] = useState<ConnectorAction | null>(null);
   const [summary, setSummary] = useState<BulkSummary | null>(null);
@@ -103,77 +105,77 @@ export function ConnectorBulkActions({
   const summaryVariant = summary && summary.failures.length > 0 ? 'warning' : 'success';
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 shadow-sm">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm font-semibold text-emerald-900">
-            {selectedCount} connector{selectedCount === 1 ? '' : 's'} selected
-          </p>
-          <p className="text-xs text-emerald-700">Apply bulk actions across the selected connectors.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {actionOrder.map((action) => {
-            const isDanger = action === 'delete';
-            const isBusy = activeAction === action;
-            const label = isBusy ? actionLoadingLabels[action] : actionLabels[action];
-            const baseClasses =
-              'inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2';
-            const toneClasses = isDanger
-              ? 'bg-rose-600 text-white hover:bg-rose-700 focus-visible:outline-rose-500 disabled:bg-rose-400'
-              : 'bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:outline-emerald-500 disabled:bg-emerald-400';
-
-            return (
-              <button
-                key={action}
-                type="button"
-                onClick={() => handleBulkAction(action)}
-                disabled={!hasSelection || Boolean(activeAction)}
-                className={`${baseClasses} ${toneClasses} disabled:cursor-not-allowed disabled:opacity-80`}
-              >
-                {label}
-              </button>
-            );
-          })}
-          <button
-            type="button"
-            onClick={onClearSelection}
-            disabled={!hasSelection || Boolean(activeAction)}
-            className="inline-flex items-center justify-center rounded-md border border-emerald-200 bg-white px-3 py-1.5 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:cursor-not-allowed disabled:opacity-70"
+    <div
+      className={`flex w-full flex-col gap-4 rounded-xl border border-[color:var(--border-muted)] bg-[color:var(--surface)] px-5 py-4 shadow-md shadow-[color:var(--shadow)]/30 md:flex-row md:items-center md:justify-between ${className ?? ''}`.trim()}
+    >
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-[color:var(--foreground-strong)]">
+          {selectedCount} connector{selectedCount === 1 ? '' : 's'} selected
+        </p>
+        <p className="text-xs text-[color:var(--muted-foreground)]">
+          Choose an action to apply across the current selection.
+        </p>
+        {error ? (
+          <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
+            {error}
+          </div>
+        ) : null}
+        {summary ? (
+          <div
+            className={`mt-2 rounded-lg px-3 py-2 text-xs font-medium ${
+              summaryVariant === 'warning'
+                ? 'border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200'
+                : 'border border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200'
+            }`}
           >
-            Clear selection
-          </button>
-        </div>
+            <p>
+              {actionPastTense[summary.action]} {summary.successes.length} of {summary.total} connector
+              {summary.total === 1 ? '' : 's'}.
+            </p>
+            {summary.failures.length > 0 ? (
+              <ul className="mt-2 space-y-1 text-xs">
+                {summary.failures.map((failure) => (
+                  <li key={failure.name}>
+                    <span className="font-semibold">{failure.name}</span>: {failure.error}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
       </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {actionOrder.map((action) => {
+          const isDanger = action === 'delete';
+          const isBusy = activeAction === action;
+          const label = isBusy ? actionLoadingLabels[action] : actionLabels[action];
+          const baseClasses =
+            'inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2';
+          const toneClasses = isDanger
+            ? 'bg-rose-600 text-white hover:bg-rose-700 focus-visible:outline-rose-500 disabled:bg-rose-500/70'
+            : 'bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:outline-emerald-500 disabled:bg-emerald-500/70';
 
-      {error && (
-        <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-          {error}
-        </div>
-      )}
-
-      {summary && (
-        <div
-          className={`rounded-md px-3 py-2 text-sm ${
-            summaryVariant === 'warning'
-              ? 'border border-amber-200 bg-amber-50 text-amber-900'
-              : 'border border-emerald-200 bg-emerald-50 text-emerald-800'
-          }`}
+          return (
+            <button
+              key={action}
+              type="button"
+              onClick={() => handleBulkAction(action)}
+              disabled={!hasSelection || Boolean(activeAction)}
+              className={`${baseClasses} ${toneClasses} disabled:cursor-not-allowed disabled:opacity-80`}
+            >
+              {label}
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          onClick={onClearSelection}
+          disabled={!hasSelection || Boolean(activeAction)}
+          className="inline-flex items-center justify-center rounded-full border border-[color:var(--border-muted)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--ring)] disabled:cursor-not-allowed disabled:opacity-70"
         >
-          <p className="font-semibold">
-            {actionPastTense[summary.action]} {summary.successes.length} of {summary.total} connector
-            {summary.total === 1 ? '' : 's'}.
-          </p>
-          {summary.failures.length > 0 && (
-            <ul className="mt-2 space-y-1 text-sm">
-              {summary.failures.map((failure) => (
-                <li key={failure.name}>
-                  <span className="font-semibold">{failure.name}</span>: {failure.error}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+          Clear
+        </button>
+      </div>
     </div>
   );
 }
