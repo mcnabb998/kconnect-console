@@ -86,9 +86,10 @@ docker compose up -d  # Starts everything including Kafka
 ## Features
 
 ### Proxy Service (Go)
-- **Routes**: `/api/:cluster/connectors*`, `/api/:cluster/monitoring/summary`, `/health`
+- **Routes**: `/api/:cluster/connectors*`, `/api/:cluster/monitoring/summary`, `/api/:cluster/connectors/:name/metrics`, `/health`
 - **Security**: Automatic redaction of passwords, secrets, tokens, API keys in responses
-- **Performance**: Response caching (10s TTL), parallel request handling, worker pools
+- **Performance**: Response caching (10s TTL for monitoring, 5s TTL for metrics), parallel request handling, worker pools
+- **Metrics**: JMX metrics via Jolokia for throughput, errors, and task-level performance
 - **Health Checks**: Verifies Kafka Connect connectivity, returns proper status codes (200/503)
 - **CORS**: Configurable origins with comma-separated list support
 - **Timeouts**: 5-second health check timeout prevents hanging
@@ -98,6 +99,7 @@ docker compose up -d  # Starts everything including Kafka
 - **Connector Management**: List, create, pause, resume, restart, delete connectors
 - **Bulk Operations**: Perform actions on multiple connectors simultaneously
 - **Real-Time Monitoring**: Live connector and task status updates with 10-second polling
+- **Performance Metrics**: Real-time throughput, error rates, and per-task metrics via JMX/Jolokia
 - **Templates**: Pre-configured connector templates (Postgres, MongoDB, S3, Elasticsearch, etc.)
 - **Security**: Automatic masking of sensitive configuration values
 - **Transformations Tab**: View Single Message Transforms (SMTs) configured on connectors
@@ -374,7 +376,22 @@ The application includes robust error handling:
 
 ## Monitoring
 
-The proxy and web UI include light-weight monitoring features so that you can understand cluster health at a glance.
+The proxy and web UI include comprehensive monitoring features for cluster health and connector performance.
+
+### Performance Metrics
+
+Real-time JMX metrics via Jolokia provide detailed connector performance data:
+
+- **Throughput**: Records/second, bytes/second, totals
+- **Errors**: Total errors, error rates, recent failures
+- **Tasks**: Per-task metrics including records, bytes, and errors
+- **Trends**: Visual indicators for performance changes
+
+Access metrics via:
+- **UI**: Connector detail page → "Metrics" tab
+- **API**: `GET /api/:cluster/connectors/:name/metrics`
+
+See [Metrics Documentation](./docs/METRICS.md) for detailed configuration and usage.
 
 ### Summary endpoint
 
@@ -432,6 +449,12 @@ Configure the application by setting the build-time environment variables `NEXT_
 | `INTERNAL_PROXY_URL` | Proxy URL for SSR (optional) | Same as NEXT_PUBLIC_PROXY_URL | `http://kconnect-proxy:8080` |
 | `NEXT_PUBLIC_CLUSTER_ID` | Default Kafka Connect cluster ID | `default` | `production-cluster` |
 | `NODE_ENV` | Node environment | `production` | `development` |
+
+**Optional (for JMX metrics):**
+
+| Variable | Description | Default | Example |
+|----------|-------------|---------|---------|
+| `JOLOKIA_URL` | Jolokia endpoint for JMX metrics | `http://localhost:8778/jolokia` | `http://kafka-connect:8778/jolokia` |
 
 ### Deployment Examples
 
