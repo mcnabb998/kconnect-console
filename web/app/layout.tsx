@@ -4,6 +4,7 @@ import { MonitoringSummaryProvider } from "./monitoring/MonitoringSummaryProvide
 import { Navigation } from "./components/Navigation";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ThemeProvider } from "@/hooks/useTheme";
+import { ToastProvider } from "@/ui";
 import { SectionErrorBoundary } from "./components/SectionErrorBoundary";
 
 export const metadata: Metadata = {
@@ -20,24 +21,26 @@ export default function RootLayout({
     <html lang="en">
       <body className="bg-[color:var(--background)] text-[color:var(--foreground)] antialiased">
         <ThemeProvider>
-          <ErrorBoundary>
-            <MonitoringSummaryProvider>
-              <div className="flex min-h-screen">
-                <aside className="w-72 shrink-0 border-r border-[color:var(--border-muted)] bg-[color:var(--surface)]">
-                  <SectionErrorBoundary section="Navigation">
-                    <Navigation />
-                  </SectionErrorBoundary>
-                </aside>
-                <main className="flex flex-1 justify-center bg-[color:var(--background)]">
-                  <div className="flex w-full max-w-[1200px] flex-col gap-6 px-6 py-8">
-                    <SectionErrorBoundary section="Page Content">
-                      {children}
+          <ToastProvider>
+            <ErrorBoundary>
+              <MonitoringSummaryProvider>
+                <div className="flex min-h-screen">
+                  <aside className="w-72 shrink-0 border-r border-[color:var(--border-muted)] bg-[color:var(--surface)]">
+                    <SectionErrorBoundary section="Navigation">
+                      <Navigation />
                     </SectionErrorBoundary>
-                  </div>
-                </main>
-              </div>
-            </MonitoringSummaryProvider>
-          </ErrorBoundary>
+                  </aside>
+                  <main className="flex flex-1 justify-center bg-[color:var(--background)]">
+                    <div className="flex w-full max-w-[1200px] flex-col gap-6 px-6 py-8">
+                      <SectionErrorBoundary section="Page Content">
+                        {children}
+                      </SectionErrorBoundary>
+                    </div>
+                  </main>
+                </div>
+              </MonitoringSummaryProvider>
+            </ErrorBoundary>
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>
