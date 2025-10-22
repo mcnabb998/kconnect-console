@@ -607,7 +607,7 @@ function ConnectorListPage() {
               href="/connectors/templates"
               className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
             >
-              Create Connector
+              Create your first connector
             </Link>
             <Link
               href="/connectors/templates"
@@ -615,6 +615,32 @@ function ConnectorListPage() {
             >
               Explore templates
             </Link>
+          </div>
+          <div className="mt-8 border-t border-slate-200 pt-6 dark:border-slate-700">
+            <p className="text-xs text-slate-500 dark:text-slate-500">
+              New to Kafka Connect?{' '}
+              <a
+                href="https://github.com/mcnabb998/kconnect-console/blob/main/GETTING_STARTED.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-emerald-600 transition hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+              >
+                View getting started guide
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="ml-1 inline-block h-3 w-3"
+                  aria-hidden
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5.22 14.78a.75.75 0 0 0 1.06 0l7.22-7.22v5.69a.75.75 0 0 0 1.5 0v-7.5a.75.75 0 0 0-.75-.75h-7.5a.75.75 0 0 0 0 1.5h5.69l-7.22 7.22a.75.75 0 0 0 0 1.06Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </a>
+            </p>
           </div>
         </div>
       )}
@@ -741,8 +767,59 @@ function ConnectorListPage() {
             </table>
           </div>
           {filteredConnectors.length === 0 && (
-            <div className="border-t border-slate-100 bg-slate-50 px-6 py-5 text-sm text-slate-600 dark:border-slate-700 dark:bg-gray-900 dark:text-slate-400">
-              No connectors match your filters.
+            <div className="border-t border-slate-100 bg-slate-50 px-6 py-10 text-center dark:border-slate-700 dark:bg-gray-900">
+              <div className="mx-auto max-w-md">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  className="mx-auto h-12 w-12 text-slate-400 dark:text-slate-500"
+                  aria-hidden
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z"
+                  />
+                </svg>
+                <h3 className="mt-4 text-base font-semibold text-slate-900 dark:text-slate-100">
+                  No connectors match your filters
+                </h3>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                  {searchTerm && stateFilter !== 'all'
+                    ? `No connectors found matching "${searchTerm}" with state "${stateFilter}".`
+                    : searchTerm
+                    ? `No connectors found matching "${searchTerm}".`
+                    : `No connectors with state "${stateFilter}".`}
+                </p>
+                <div className="mt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setStateFilter('all');
+                    }}
+                    className="inline-flex items-center justify-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600 dark:hover:bg-slate-700"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className="h-4 w-4"
+                      aria-hidden
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.5 3.528v4.644c0 .729-.29 1.428-.805 1.944l-1.217 1.216a8.75 8.75 0 0 1 3.55.621l.502.201a7.25 7.25 0 0 0 4.178.365l-2.403-2.403a2.75 2.75 0 0 1-.805-1.944V3.528a40.205 40.205 0 0 0-3 0Zm4.5.084.19.015a.75.75 0 1 0 .12-1.495 41.364 41.364 0 0 0-6.62 0 .75.75 0 0 0 .12 1.495L7 3.612v4.56c0 .331-.132.649-.366.883L2.6 13.09c-1.496 1.496-.817 4.15 1.403 4.475C5.961 17.852 7.963 18 10 18s4.039-.148 5.997-.436c2.22-.325 2.9-2.979 1.403-4.475l-4.034-4.034A1.25 1.25 0 0 1 13 8.172v-4.56Z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    Clear filters
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>

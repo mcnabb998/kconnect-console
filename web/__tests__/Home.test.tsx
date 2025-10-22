@@ -83,6 +83,23 @@ describe('Home page', () => {
     });
   });
 
+  it('shows "Create your first connector" CTA and getting started link when no connectors exist', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => []
+    } as Response);
+
+    await act(async () => {
+      render(<Home />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'No connectors yet' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /Create your first connector/i })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /View getting started guide/i })).toBeInTheDocument();
+    });
+  });
+
   it('displays an error message when the fetch fails and allows retry', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: false
@@ -107,6 +124,185 @@ describe('Home page', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Recovered Connector')).toBeInTheDocument();
+    });
+  });
+
+  it('shows filtered empty state with clear filters button when search filters out all connectors', async () => {
+    // Mock API responses for connectors
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes('/status')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            connector: { state: 'RUNNING', worker_id: 'worker-1' },
+            tasks: [{ id: 0, state: 'RUNNING' }],
+          }),
+        });
+      }
+      if (url.includes('/connectors') && !url.includes('/status')) {
+        const match = url.match(/\/connectors\/([^/]+)$/);
+        if (match) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              name: match[1],
+              config: { 'connector.class': 'TestConnector' },
+            }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ['my-connector'],
+        });
+      }
+      return Promise.reject(new Error('Unknown URL'));
+    });
+
+    await act(async () => {
+      render(<Home />);
+    });
+
+    // Wait for connectors to load
+    await waitFor(() => {
+      expect(screen.getByText('my-connector')).toBeInTheDocument();
+    });
+
+    // Type in search box to filter out all connectors
+    const searchInput = screen.getByPlaceholderText(/Search connectors/i);
+    await act(async () => {
+      fireEvent.change(searchInput, { target: { value: 'nonexistent' } });
+    });
+
+    // Check for filtered empty state
+    await waitFor(() => {
+      expect(screen.getByText(/No connectors match your filters/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Clear filters/i })).toBeInTheDocument();
+    });
+  });
+
+  it('clears search term when clear filters button is clicked', async () => {
+    // Mock API responses
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes('/status')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            connector: { state: 'RUNNING', worker_id: 'worker-1' },
+            tasks: [{ id: 0, state: 'RUNNING' }],
+          }),
+        });
+      }
+      if (url.includes('/connectors') && !url.includes('/status')) {
+        const match = url.match(/\/connectors\/([^/]+)$/);
+        if (match) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              name: match[1],
+              config: { 'connector.class': 'TestConnector' },
+            }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ['test-connector'],
+        });
+      }
+      return Promise.reject(new Error('Unknown URL'));
+    });
+
+    await act(async () => {
+      render(<Home />);
+    });
+
+    // Wait for connectors to load
+    await waitFor(() => {
+      expect(screen.getByText('test-connector')).toBeInTheDocument();
+    });
+
+    // Type in search box to filter
+    const searchInput = screen.getByPlaceholderText(/Search connectors/i);
+    await act(async () => {
+      fireEvent.change(searchInput, { target: { value: 'nonexistent' } });
+    });
+
+    // Wait for filtered empty state
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Clear filters/i })).toBeInTheDocument();
+    });
+
+    // Click clear filters button
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Clear filters/i }));
+    });
+
+    // Check that search is cleared and connector is visible again
+    await waitFor(() => {
+      expect(searchInput).toHaveValue('');
+      expect(screen.getByText('test-connector')).toBeInTheDocument();
+    });
+  });
+
+  it('clears state filter when clear filters button is clicked', async () => {
+    // Mock API responses
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes('/status')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            connector: { state: 'RUNNING', worker_id: 'worker-1' },
+            tasks: [{ id: 0, state: 'RUNNING' }],
+          }),
+        });
+      }
+      if (url.includes('/connectors') && !url.includes('/status')) {
+        const match = url.match(/\/connectors\/([^/]+)$/);
+        if (match) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              name: match[1],
+              config: { 'connector.class': 'TestConnector' },
+            }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ['running-connector'],
+        });
+      }
+      return Promise.reject(new Error('Unknown URL'));
+    });
+
+    await act(async () => {
+      render(<Home />);
+    });
+
+    // Wait for connectors to load
+    await waitFor(() => {
+      expect(screen.getByText('running-connector')).toBeInTheDocument();
+    });
+
+    // Change state filter to "paused" (no connectors match)
+    const stateFilter = screen.getByRole('combobox');
+    await act(async () => {
+      fireEvent.change(stateFilter, { target: { value: 'paused' } });
+    });
+
+    // Wait for filtered empty state
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Clear filters/i })).toBeInTheDocument();
+    });
+
+    // Click clear filters button
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Clear filters/i }));
+    });
+
+    // Check that state filter is cleared and connector is visible again
+    await waitFor(() => {
+      expect(stateFilter).toHaveValue('all');
+      expect(screen.getByText('running-connector')).toBeInTheDocument();
     });
   });
 });
