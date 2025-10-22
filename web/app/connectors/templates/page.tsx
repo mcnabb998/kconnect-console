@@ -16,6 +16,7 @@ import {
 } from '@/lib/api';
 import { connectorTemplates, ConnectorTemplate, getTemplatesByCategory } from '@/data/connectorTemplates';
 import DynamicField from '@/components/DynamicField';
+import { logger } from '@/lib/logger';
 
 type Step = 'template' | 'plugin' | 'configure' | 'preview';
 
@@ -166,25 +167,49 @@ export default function NewConnectorPage() {
 
   // Validate configuration
   const validateConfiguration = async () => {
-    if (!selectedPlugin) return;
+    if (!selectedPlugin) {
+      logger.error('Validation failed: No plugin selected');
+      return false;
+    }
+
+    if (!connectorName.trim()) {
+      logger.error('Validation failed: No connector name provided');
+      setError('Connector name is required');
+      return false;
+    }
 
     try {
       setValidating(true);
       setValidationErrors({});
-      const validation = await validateConfig(selectedPlugin, configValues);
-      
+
+      // Include connector name in validation
+      const configToValidate = {
+        ...configValues,
+        'connector.class': selectedPlugin,
+        name: connectorName,
+      };
+
+      logger.debug('Validating configuration:', { selectedPlugin, connectorName, configToValidate });
+
+      const validation = await validateConfig(selectedPlugin, configToValidate);
+      logger.debug('Validation response:', validation);
+
       const errors = extractValidationErrors(validation);
-      
+      logger.debug('Extracted validation errors:', errors);
+
       if (Object.keys(errors).length > 0) {
         setValidationErrors(errors);
+        logger.warn('Validation failed with errors:', errors);
         return false;
       }
-      
+
+      logger.info('Configuration validation passed successfully');
       return true;
     } catch (error) {
       const message = error instanceof KafkaConnectApiError
         ? error.message
         : `Validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      logger.error('Validation error:', error);
       setError(message);
       return false;
     } finally {
@@ -194,16 +219,30 @@ export default function NewConnectorPage() {
 
   // Create connector
   const handleCreate = async () => {
-    if (!connectorName.trim() || !selectedPlugin) return;
+    if (!connectorName.trim() || !selectedPlugin) {
+      setError('Connector name and plugin are required');
+      return;
+    }
 
     const isValid = await validateConfiguration();
-    if (!isValid) return;
+    if (!isValid) {
+      // Set appropriate error message based on whether we have validation errors
+      if (Object.keys(validationErrors).length > 0) {
+        setError('Configuration validation failed. Please fix the validation errors below before creating the connector.');
+      } else if (!error) {
+        // Only set generic error if there isn't already a more specific error from validateConfiguration
+        setError('Configuration validation failed. Please review your configuration and try again.');
+      }
+      // Scroll to top to show errors
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
 
     try {
       setLoading(true);
       setError(null);
       await createConnector(connectorName, configValues);
-      router.push(`/connectors/${encodeURIComponent(connectorName)}`);
+      router.push(`/connectors/${encodeURIComponent(connectorName)}?created=true`);
     } catch (error) {
       const message = error instanceof KafkaConnectApiError
         ? `Creation Failed: ${error.message}`
@@ -533,6 +572,28 @@ export default function NewConnectorPage() {
           </div>
 
           <div className="space-y-4">
+            {/* Show validation errors if any */}
+            {Object.keys(validationErrors).length > 0 && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <h3 className="font-medium text-red-900 mb-2">❌ Configuration Errors</h3>
+                <div className="space-y-2">
+                  {Object.entries(validationErrors).map(([field, errors]) => (
+                    <div key={field} className="text-sm">
+                      <span className="font-medium text-red-800">{field}:</span>
+                      <ul className="ml-4 mt-1 list-disc list-inside text-red-700">
+                        {errors.map((error, idx) => (
+                          <li key={idx}>{error}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-sm text-red-800">
+                  Please go back to configuration and fix these errors before creating the connector.
+                </p>
+              </div>
+            )}
+
             <div className="bg-gray-50 rounded-lg p-4">
               <h3 className="font-medium text-gray-900 mb-2">Connector Details</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">

@@ -4,7 +4,10 @@ import { useEffect, useState } from 'react';
 
 interface HealthStatus {
   status: 'healthy' | 'unhealthy' | 'checking';
-  kafka_connect?: 'up' | 'down';
+  kafka_connect?: {
+    status: string;
+    url: string;
+  };
   timestamp?: string;
   error?: string;
 }
@@ -64,11 +67,14 @@ export default function HealthPage() {
         timestamp: new Date().toISOString(),
       });
 
+      // Check if kafka_connect exists and has status "reachable"
+      const isConnectHealthy = data.kafka_connect?.status === 'reachable';
+
       setKafkaConnectHealth({
         name: 'Kafka Connect',
-        status: data.kafka_connect === 'up' ? 'healthy' : 'unhealthy',
-        message: data.kafka_connect === 'up'
-          ? 'Connected successfully'
+        status: isConnectHealthy ? 'healthy' : 'unhealthy',
+        message: isConnectHealthy
+          ? `Connected successfully to ${data.kafka_connect?.url || 'Kafka Connect'}`
           : 'Unable to connect to Kafka Connect',
         latency,
       });

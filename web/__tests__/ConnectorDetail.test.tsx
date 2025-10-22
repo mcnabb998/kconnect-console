@@ -1,11 +1,12 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import ConnectorDetail from '../app/connectors/[name]/page';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 
 describe('ConnectorDetail page', () => {
   const fetchMock = jest.fn();
   const mockedUseParams = useParams as unknown as jest.Mock;
   const mockedUseRouter = useRouter as unknown as jest.Mock;
+  const mockedUseSearchParams = useSearchParams as unknown as jest.Mock;
   const originalConfirm = window.confirm;
 
   const baseStatus = {
@@ -49,6 +50,8 @@ describe('ConnectorDetail page', () => {
     push = jest.fn();
     mockedUseParams.mockReturnValue({ name: 'connector-one' });
     mockedUseRouter.mockReturnValue({ replace, push });
+    // Mock useSearchParams to return a URLSearchParams-like object
+    mockedUseSearchParams.mockReturnValue(new URLSearchParams());
     window.history.replaceState({}, '', '/connectors/connector-one');
     window.confirm = originalConfirm;
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -94,6 +97,8 @@ describe('ConnectorDetail page', () => {
       }
     );
 
+    // Mock searchParams to include created=true
+    mockedUseSearchParams.mockReturnValue(new URLSearchParams('created=true'));
     window.history.replaceState({}, '', '/connectors/connector-one?created=true');
 
     render(<ConnectorDetail />);
@@ -107,7 +112,7 @@ describe('ConnectorDetail page', () => {
     expect(screen.getAllByText('RUNNING').length).toBeGreaterThan(0);
     expect(screen.getAllByText('worker-1')[0]).toBeInTheDocument();
 
-    expect(replace).toHaveBeenCalledWith('/connectors/connector-one', undefined);
+    expect(replace).toHaveBeenCalledWith('/connectors/connector-one', { scroll: false });
 
     expect(
       screen.getByText(/"connector.class": "io\.confluent\.kafka\.connect\.datagen\.DatagenConnector"/)
