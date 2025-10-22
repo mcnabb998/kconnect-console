@@ -16,6 +16,7 @@ import {
 } from '@/lib/api';
 import { connectorTemplates, ConnectorTemplate, getTemplatesByCategory } from '@/data/connectorTemplates';
 import DynamicField from '@/components/DynamicField';
+import { logger } from '@/lib/logger';
 
 type Step = 'template' | 'plugin' | 'configure' | 'preview';
 
@@ -167,12 +168,12 @@ export default function NewConnectorPage() {
   // Validate configuration
   const validateConfiguration = async () => {
     if (!selectedPlugin) {
-      console.error('No plugin selected');
+      logger.error('Validation failed: No plugin selected');
       return false;
     }
 
     if (!connectorName.trim()) {
-      console.error('No connector name provided');
+      logger.error('Validation failed: No connector name provided');
       setError('Connector name is required');
       return false;
     }
@@ -188,27 +189,27 @@ export default function NewConnectorPage() {
         ...configValues,
       };
 
-      console.log('Validating configuration:', { selectedPlugin, connectorName, configToValidate });
+      logger.debug('Validating configuration:', { selectedPlugin, connectorName, configToValidate });
 
       const validation = await validateConfig(selectedPlugin, configToValidate);
-      console.log('Validation response:', validation);
+      logger.debug('Validation response:', validation);
 
       const errors = extractValidationErrors(validation);
-      console.log('Extracted errors:', errors);
+      logger.debug('Extracted validation errors:', errors);
 
       if (Object.keys(errors).length > 0) {
         setValidationErrors(errors);
-        console.error('Validation failed with errors:', errors);
+        logger.warn('Validation failed with errors:', errors);
         return false;
       }
 
-      console.log('Validation passed successfully');
+      logger.info('Configuration validation passed successfully');
       return true;
     } catch (error) {
       const message = error instanceof KafkaConnectApiError
         ? error.message
         : `Validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      console.error('Validation error:', error);
+      logger.error('Validation error:', error);
       setError(message);
       return false;
     } finally {

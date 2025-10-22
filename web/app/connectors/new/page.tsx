@@ -14,6 +14,7 @@ import {
   extractValidationErrors,
 } from '@/lib/api';
 import DynamicField from '@/components/DynamicField';
+import { logger } from '@/lib/logger';
 
 type Step = 'plugin' | 'configure' | 'preview';
 
@@ -113,7 +114,7 @@ export default function NewConnectorPage() {
         setLoading(true);
         setError(null);
         
-        console.log('Starting validation for plugin:', selectedPlugin);
+        logger.debug('Starting validation for plugin:', selectedPlugin);
         
         // Start with common defaults
         const initialConfig = {
@@ -122,7 +123,7 @@ export default function NewConnectorPage() {
         };
 
         const response = await validateConfig(selectedPlugin, initialConfig);
-        console.log('Validation response:', response);
+        logger.debug('Validation response:', response);
         
         // Extract the definitions from the validation response structure
         const definitions = response.configs?.map(config => config.definition) || [];
@@ -131,7 +132,7 @@ export default function NewConnectorPage() {
         
         setValidationErrors(extractValidationErrors(response));
       } catch (err) {
-        console.error('Validation error:', err);
+        logger.error('Validation error:', err);
         if (err instanceof Error) {
           setError(`Failed to load configuration: ${err.message}`);
         } else {

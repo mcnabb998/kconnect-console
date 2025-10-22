@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 import { LoadingButton } from '@/components/LoadingButton';
@@ -32,6 +32,7 @@ interface ConnectorStatus {
 export default function ConnectorDetail() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const name = params?.name as string;
   const cluster = API_CONFIG.clusterId;
   const { toasts, success, error: showErrorToast, dismissToast } = useToast();
@@ -83,14 +84,14 @@ export default function ConnectorDetail() {
       fetchConnectorDetails();
 
       // Check if redirected from creation
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('created') === 'true') {
+      if (searchParams.get('created') === 'true') {
         success(`Connector "${name}" created successfully`);
-        // Remove the query param from URL
-        router.replace(`/connectors/${name}`, undefined);
+        // Remove the query param from URL without full reload
+        const newUrl = `/connectors/${encodeURIComponent(name)}`;
+        window.history.replaceState({}, '', newUrl);
       }
     }
-  }, [name, router, success, fetchConnectorDetails]);
+  }, [name, searchParams, success, fetchConnectorDetails]);
 
   // Auto-refresh logic
   useEffect(() => {
