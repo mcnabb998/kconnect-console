@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { LoadingButton } from '@/components/LoadingButton';
 import { SkeletonBadge, SkeletonCard, SkeletonLine, SkeletonTableRow } from '@/components/Skeleton';
+import { Tooltip } from '@/components/Tooltip';
 import { getProxyUrl, API_CONFIG } from '@/lib/config';
 
 const PROXY = getProxyUrl();
@@ -556,22 +557,24 @@ export default function ClusterPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              disabled={true}
-              title="Rebalance operation not supported by this Kafka Connect version"
-              className="inline-flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed opacity-60"
-            >
-              Trigger rebalance (unavailable)
-            </button>
-            <button
-              type="button"
-              disabled={true}
-              title="Restart all operation not supported by this Kafka Connect version"
-              className="inline-flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed opacity-60"
-            >
-              Restart all connectors (unavailable)
-            </button>
+            <Tooltip content="Requires Kafka Connect 2.8+ with rebalance API. This feature is not available in your current cluster version.">
+              <button
+                type="button"
+                disabled={true}
+                className="inline-flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed opacity-60"
+              >
+                Trigger rebalance (unavailable)
+              </button>
+            </Tooltip>
+            <Tooltip content="Feature disabled for safety. Use bulk actions on the connectors page to restart multiple connectors at once.">
+              <button
+                type="button"
+                disabled={true}
+                className="inline-flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed opacity-60"
+              >
+                Restart all connectors (unavailable)
+              </button>
+            </Tooltip>
             <LoadingButton
               variant="ghost"
               onClick={() => refresh()}
@@ -628,9 +631,17 @@ export default function ClusterPage() {
           <div className="rounded-card border border-gray-200/80 bg-white/80 p-5 shadow-card dark:border-gray-700/60 dark:bg-slate-900/60">
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Rebalance state</h3>
             <p className="mt-2 inline-flex items-center gap-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
-              <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getStateBadgeClasses(normalizeState(rebalance.state))}`}>
-                {normalizeState(rebalance.state)}
-              </span>
+              {normalizeState(rebalance.state) === 'NOT AVAILABLE' ? (
+                <Tooltip content="Rebalance status not supported by this Kafka Connect version. Upgrade to Kafka Connect 2.8+ to enable this feature.">
+                  <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getStateBadgeClasses(normalizeState(rebalance.state))}`}>
+                    {normalizeState(rebalance.state)}
+                  </span>
+                </Tooltip>
+              ) : (
+                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getStateBadgeClasses(normalizeState(rebalance.state))}`}>
+                  {normalizeState(rebalance.state)}
+                </span>
+              )}
             </p>
             <p className="mt-1 text-xs text-gray-500" title={rebalance.reason ?? undefined}>
               {rebalance.reason ? rebalance.reason : 'No rebalance reason reported'}
@@ -739,8 +750,18 @@ export default function ClusterPage() {
               <dl className="mt-4 space-y-2 text-sm text-blue-900 dark:text-blue-100">
                 <div className="flex items-center justify-between">
                   <dt className="text-sm font-medium">State</dt>
-                  <dd className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getStateBadgeClasses(normalizeState(rebalance.state))}`}>
-                    {normalizeState(rebalance.state)}
+                  <dd>
+                    {normalizeState(rebalance.state) === 'NOT AVAILABLE' ? (
+                      <Tooltip content="Rebalance status not supported by this Kafka Connect version. Upgrade to Kafka Connect 2.8+ to enable this feature.">
+                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getStateBadgeClasses(normalizeState(rebalance.state))}`}>
+                          {normalizeState(rebalance.state)}
+                        </span>
+                      </Tooltip>
+                    ) : (
+                      <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getStateBadgeClasses(normalizeState(rebalance.state))}`}>
+                        {normalizeState(rebalance.state)}
+                      </span>
+                    )}
                   </dd>
                 </div>
                 <div className="flex items-center justify-between">
