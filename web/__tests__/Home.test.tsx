@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Home from '../app/page';
 
@@ -35,10 +35,12 @@ describe('Home page', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it('shows a loading indicator while fetching connectors', () => {
+  it('shows a loading indicator while fetching connectors', async () => {
     fetchMock.mockReturnValue(new Promise(() => {}));
 
-    render(<Home />);
+    await act(async () => {
+      render(<Home />);
+    });
 
     const status = screen.getByRole('status');
     expect(status).toHaveAttribute('aria-live', 'polite');
@@ -51,7 +53,9 @@ describe('Home page', () => {
       json: async () => ['Connector A', 'Connector B']
     } as Response);
 
-    render(<Home />);
+    await act(async () => {
+      render(<Home />);
+    });
 
     await waitFor(() => {
       expect(screen.getByText('Connector A')).toBeInTheDocument();
@@ -70,7 +74,9 @@ describe('Home page', () => {
       json: async () => []
     } as Response);
 
-    render(<Home />);
+    await act(async () => {
+      render(<Home />);
+    });
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'No connectors yet' })).toBeInTheDocument();
@@ -82,7 +88,9 @@ describe('Home page', () => {
       ok: false
     } as Response);
 
-    render(<Home />);
+    await act(async () => {
+      render(<Home />);
+    });
 
     await waitFor(() => {
       expect(screen.getByText('Failed to fetch connectors')).toBeInTheDocument();
@@ -93,7 +101,9 @@ describe('Home page', () => {
       json: async () => ['Recovered Connector']
     } as Response);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+    });
 
     await waitFor(() => {
       expect(screen.getByText('Recovered Connector')).toBeInTheDocument();
