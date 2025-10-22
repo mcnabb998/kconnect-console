@@ -129,12 +129,20 @@ describe('lib/api', () => {
     await expect(getConnector('alpha')).rejects.toThrow('HTTP 500: Internal Server Error');
   });
 
-  it('translates network failures into descriptive errors', async () => {
+  it('translates network failures into categorized errors', async () => {
     fetchMock.mockRejectedValue(new Error('socket closed'));
 
-    await expect(createConnector('alpha', { 'tasks.max': '1' })).rejects.toThrow(
-      'Network error: socket closed'
-    );
+    try {
+      await createConnector('alpha', { 'tasks.max': '1' });
+      throw new Error('Should have thrown');
+    } catch (error: any) {
+      // Should contain the original error message
+      expect(error.message).toContain('socket closed');
+      // Should have categorization metadata
+      expect(error.categorized).toBeDefined();
+      expect(error.troubleshooting).toBeDefined();
+      expect(error.type).toBeDefined();
+    }
   });
 
   it('sends connector creation requests with the name embedded in config', async () => {
