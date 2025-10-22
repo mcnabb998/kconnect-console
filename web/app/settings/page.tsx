@@ -80,12 +80,52 @@ export default function SettingsPage() {
   }
 
   if (error) {
+    // Check if this is a proxy connectivity error
+    const isProxyError = error.includes('Failed to fetch') ||
+                        error.includes('Network error') ||
+                        error.includes('fetch failed') ||
+                        error.includes('ECONNREFUSED');
+
     return (
       <div className="p-6">
         <h1 className="text-2xl font-bold mb-6">Settings</h1>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <h2 className="text-red-800 font-semibold">Error Loading Settings</h2>
-          <p className="text-red-700">{error}</p>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <h2 className="text-red-800 font-semibold text-lg mb-3">
+            {isProxyError ? 'Cannot Connect to Proxy Service' : 'Error Loading Settings'}
+          </h2>
+          <p className="text-red-700 mb-4">{error}</p>
+
+          {isProxyError && (
+            <div className="mt-4 space-y-3 text-sm">
+              <p className="text-red-900 font-medium">The proxy service is not running or not accessible.</p>
+              <div className="bg-white rounded p-4 border border-red-200">
+                <p className="font-semibold text-gray-900 mb-2">To start the proxy service:</p>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-gray-700 mb-1"><strong>Option 1:</strong> Using Docker Compose</p>
+                    <code className="block bg-gray-900 text-gray-100 px-3 py-2 rounded font-mono text-xs">
+                      cd compose && docker compose up -d
+                    </code>
+                  </div>
+                  <div>
+                    <p className="text-gray-700 mb-1"><strong>Option 2:</strong> Using Makefile</p>
+                    <code className="block bg-gray-900 text-gray-100 px-3 py-2 rounded font-mono text-xs">
+                      make up
+                    </code>
+                  </div>
+                </div>
+                <p className="text-gray-600 mt-3 text-xs">
+                  The proxy service should be accessible at: <strong className="text-gray-900">http://localhost:8080</strong>
+                </p>
+              </div>
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+              >
+                Retry Connection
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
