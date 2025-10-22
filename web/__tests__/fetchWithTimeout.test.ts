@@ -137,7 +137,7 @@ describe('fetchWithTimeout with error categorization', () => {
 
       try {
         await fetchWithTimeout('http://example.com');
-        fail('Should have thrown');
+        throw new Error('Should have thrown');
       } catch (error: any) {
         expect(error.originalError).toBe(originalError);
       }
@@ -161,7 +161,7 @@ describe('fetchWithTimeout with error categorization', () => {
 
       try {
         await fetchWithTimeout('http://example.com', { timeout: 100 });
-        fail('Should have thrown');
+        throw new Error('Should have thrown');
       } catch (error: any) {
         expect(error.message).toContain('100ms');
         expect(error.type).toBe(NetworkErrorType.TIMEOUT);
@@ -248,7 +248,7 @@ describe('fetchWithTimeout with error categorization', () => {
 
       try {
         await fetchWithTimeout('http://example.com');
-        fail('Should have thrown');
+        throw new Error('Should have thrown');
       } catch (err) {
         expect(isCategorizedError(err)).toBe(true);
         if (isCategorizedError(err)) {
@@ -284,7 +284,7 @@ describe('fetchWithTimeout with error categorization', () => {
 
       try {
         await fetchWithTimeout('http://example.com:8080/api/test', { timeout: 2000 });
-        fail('Should have thrown');
+        throw new Error('Should have thrown');
       } catch (error: any) {
         expect(error.message).toContain('http://example.com:8080/api/test');
         expect(error.message).toContain('2000ms');
@@ -297,7 +297,7 @@ describe('fetchWithTimeout with error categorization', () => {
 
       try {
         await fetchWithTimeout('http://example.com');
-        fail('Should have thrown');
+        throw new Error('Should have thrown');
       } catch (err: any) {
         expect(err.categorized).toBeDefined();
         expect(err.type).toBe(NetworkErrorType.CONNECTION_REFUSED);
@@ -347,7 +347,7 @@ describe('fetchWithTimeout with error categorization', () => {
 
         try {
           await fetchWithTimeout('http://example.com');
-          fail(`Should have thrown for ${name}`);
+          throw new Error(`Should have thrown for ${name}`);
         } catch (err: any) {
           expect(err.type).toBe(expectedType);
           expect(err.message.toLowerCase()).toContain(expectedInMessage.toLowerCase());

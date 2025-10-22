@@ -134,7 +134,7 @@ describe('lib/api', () => {
 
     try {
       await createConnector('alpha', { 'tasks.max': '1' });
-      fail('Should have thrown');
+      throw new Error('Should have thrown');
     } catch (error: any) {
       // Should contain the original error message
       expect(error.message).toContain('socket closed');
