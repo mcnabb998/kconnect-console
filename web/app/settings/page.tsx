@@ -37,28 +37,31 @@ export default function SettingsPage() {
   const [plugins, setPlugins] = useState<ConnectorPlugin[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<Error | null>(null);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setErrorType(null);
+
+      if (activeTab === 'overview') {
+        const summaryData = await fetchSummary('default');
+        setSummary(summaryData);
+      } else if (activeTab === 'plugins') {
+        const pluginsData = await fetchConnectorPlugins('default');
+        setPlugins(pluginsData);
+      }
+    } catch (err) {
+      console.error('Failed to load settings data:', err);
+      setErrorType(err instanceof Error ? err : null);
+      setError(err && typeof err === 'object' && 'message' in err ? String(err.message) : String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        if (activeTab === 'overview') {
-          const summaryData = await fetchSummary('default');
-          setSummary(summaryData);
-        } else if (activeTab === 'plugins') {
-          const pluginsData = await fetchConnectorPlugins('default');
-          setPlugins(pluginsData);
-        }
-      } catch (err) {
-        console.error('Failed to load settings data:', err);
-        setError(err && typeof err === 'object' && 'message' in err ? String(err.message) : String(err));
-      } finally {
-        setLoading(false);
-      }
-    }
-
     loadData();
   }, [activeTab]);
 
@@ -81,10 +84,13 @@ export default function SettingsPage() {
 
   if (error) {
     // Check if this is a proxy connectivity error
-    const isProxyError = error.includes('Failed to fetch') ||
-                        error.includes('Network error') ||
-                        error.includes('fetch failed') ||
-                        error.includes('ECONNREFUSED');
+    // TypeError is the standard browser error for network failures
+    const isProxyError =
+      (errorType instanceof TypeError) ||
+      error.includes('Failed to fetch') ||
+      error.includes('Network error') ||
+      error.includes('fetch failed') ||
+      error.includes('ECONNREFUSED');
 
     return (
       <div className="p-6">
@@ -103,15 +109,15 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <div>
                     <p className="text-gray-700 mb-1"><strong>Option 1:</strong> Using Docker Compose</p>
-                    <code className="block bg-gray-900 text-gray-100 px-3 py-2 rounded font-mono text-xs">
-                      cd compose && docker compose up -d
-                    </code>
+                    <pre className="bg-gray-900 text-gray-100 px-3 py-2 rounded font-mono text-xs m-0" role="code" aria-label="Docker Compose command">
+                      <code>cd compose && docker compose up -d</code>
+                    </pre>
                   </div>
                   <div>
                     <p className="text-gray-700 mb-1"><strong>Option 2:</strong> Using Makefile</p>
-                    <code className="block bg-gray-900 text-gray-100 px-3 py-2 rounded font-mono text-xs">
-                      make up
-                    </code>
+                    <pre className="bg-gray-900 text-gray-100 px-3 py-2 rounded font-mono text-xs m-0" role="code" aria-label="Makefile command">
+                      <code>make up</code>
+                    </pre>
                   </div>
                 </div>
                 <p className="text-gray-600 mt-3 text-xs">
@@ -119,7 +125,7 @@ export default function SettingsPage() {
                 </p>
               </div>
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => loadData()}
                 className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
               >
                 Retry Connection
