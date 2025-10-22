@@ -533,6 +533,7 @@ export default function NewConnectorPage() {
                       value={configValues[definition.name]}
                       onChange={(value) => setConfigValues(prev => ({ ...prev, [definition.name]: value }))}
                       error={validationErrors[definition.name]}
+                      connectorClass={selectedTemplate?.connectorClass || selectedPlugin}
                     />
                   ))}
               </div>

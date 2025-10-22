@@ -455,6 +455,7 @@ export default function NewConnectorPage() {
                         value={configValues[definition.name]}
                         onChange={(value) => handleConfigChange(definition.name, value)}
                         error={validationErrors[definition.name]}
+                        connectorClass={selectedPlugin}
                       />
                     ))}
                 </div>
