@@ -1,0 +1,185 @@
+name: Create Draft Work Package PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to prepare
+        required: true
+      component:
+        description: Component inferred for the issue
+        required: true
+      files:
+        description: Comma separated focus globs
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Fetch issue details
+        id: issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GH_TOKEN }}
+          script: |
+            const issueNumber = Number('${{ inputs.issue_number }}');
+            const { data } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+            core.setOutput('title', data.title);
+            core.setOutput('url', data.html_url);
+            core.setOutput('body', data.body || '');
+
+      - name: Create work package file
+        env:
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          ISSUE_TITLE: ${{ steps.issue.outputs.title }}
+          ISSUE_URL: ${{ steps.issue.outputs.url }}
+          COMPONENT: ${{ inputs.component }}
+          FILES: ${{ inputs.files }}
+          REPO: ${{ github.repository }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { mkdirSync, writeFileSync } from 'node:fs';
+          import { join } from 'node:path';
+
+          const issue = process.env.ISSUE_NUMBER;
+          const title = process.env.ISSUE_TITLE;
+          const url = process.env.ISSUE_URL;
+          const component = process.env.COMPONENT;
+          const repo = process.env.REPO;
+          const filesInput = process.env.FILES ?? '';
+          const files = filesInput
+            .split(',')
+            .map((value) => value.trim())
+            .filter((value) => value.length > 0);
+          const workDir = join('.ai', 'work');
+          mkdirSync(workDir, { recursive: true });
+          const codespaces = `https://github.com/${repo}/codespaces/new?hide_repo_select=true&ref=ai/issue-${issue}`;
+          const lines = [
+            `# Work package for issue #${issue}`,
+            '',
+            '## Issue context',
+            `- Source: [#${issue}](${url})`,
+            `- Title: ${title}`,
+            `- Component: ${component}`,
+            '',
+            '## Focus globs',
+            files.length ? files.map((file) => `- \`${file}\``).join('\n') : '- _No specific globs provided_',
+            '',
+            '## Checklist',
+            '- [ ] Review the linked issue details',
+            '- [ ] Implement the proposed changes',
+            '- [ ] Add or update automated tests as needed',
+            '- [ ] Run repository validation workflows',
+            '',
+            `Codespaces quick start: ${codespaces}`,
+            '',
+            '> TODO: swap draft PR creation with agent execution once available.'
+          ];
+          writeFileSync(join(workDir, `issue-${issue}.md`), `${lines.join('\n')}\n`, 'utf8');
+          NODE
+
+      - name: Create branch
+        env:
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+        run: |
+          git checkout -b "ai/issue-${ISSUE_NUMBER}"
+
+      - name: Commit work package
+        env:
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add .
+          git commit -m "chore: add work package for issue #$ISSUE_NUMBER"
+
+      - name: Push branch
+        env:
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+        run: |
+          git push origin "ai/issue-${ISSUE_NUMBER}"
+
+      - name: Open draft pull request
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GH_TOKEN }}
+          script: |
+            const issueNumber = Number('${{ inputs.issue_number }}');
+            const branch = `ai/issue-${issueNumber}`;
+            const component = '${{ inputs.component }}';
+            const files = '${{ inputs.files }}'
+              .split(',')
+              .map((value) => value.trim())
+              .filter((value) => value.length > 0);
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+            const title = `AI Work Package: #${issueNumber} ${issue.title}`;
+            const codespaces = `https://github.com/${context.repo.owner}/${context.repo.repo}/codespaces/new?hide_repo_select=true&ref=${branch}`;
+            const lines = [
+              '## Issue',
+              `- Source: #${issueNumber}`,
+              `- Title: ${issue.title}`,
+              `- Component: ${component}`,
+              '',
+              '## Focus globs',
+              files.length ? files.map((file) => `- \`${file}\``).join('\n') : '- _No specific globs provided_',
+              '',
+              '## Checklist',
+              '- [ ] Review the linked issue details',
+              '- [ ] Implement the proposed changes',
+              '- [ ] Add or update automated tests as needed',
+              '- [ ] Run repository validation workflows',
+              '',
+              `Codespaces quick start: ${codespaces}`,
+              '',
+              '> TODO: replace this placeholder with a real agent runner.'
+            ];
+            const body = lines.join('\n');
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: branch,
+              base: 'main',
+              title,
+              body,
+              draft: true
+            });
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              labels: ['ai-generated', 'auto-merge']
+            });
+            if (context.actor) {
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                assignees: [context.actor]
+              });
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: `Draft work package PR created: #${pr.number}`
+            });

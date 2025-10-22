@@ -1,0 +1,48 @@
+name: Auto triage
+
+on:
+  issues:
+    types:
+      - opened
+      - edited
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: read
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout ai/state
+        uses: actions/checkout@v4
+        with:
+          ref: ai/state
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install minimatch@9
+
+      - name: Run triage script
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: node .github/scripts/triage.mjs
+
+      - name: Commit queue update
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          if git status --short | grep -E '\.ai/queue\.json'; then
+            git config user.name 'github-actions[bot]'
+            git config user.email 'github-actions[bot]@users.noreply.github.com'
+            git commit -am "chore: update AI queue for issue #$ISSUE_NUMBER"
+            git push origin HEAD:ai/state
+          else
+            echo 'No queue changes detected.'
+          fi

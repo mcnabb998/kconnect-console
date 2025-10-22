@@ -1,0 +1,49 @@
+name: Chore
+description: Track a maintenance task or refactor.
+labels:
+  - type:chore
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for dependency bumps, refactors, or other upkeep tasks.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which area is this task related to?
+      options:
+        - web
+        - proxy
+        - docker
+        - unknown
+      default: unknown
+    validations:
+      required: true
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Complexity
+      description: Estimated size of the task.
+      options:
+        - S
+        - M
+        - L
+      default: M
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Task details
+      description: Outline the maintenance work being proposed.
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Likely files or directories
+      description: Optional hints such as file paths or globs.
+      placeholder: compose/**/*.yaml
+    validations:
+      required: false

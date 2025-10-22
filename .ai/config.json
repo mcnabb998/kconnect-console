@@ -1,0 +1,20 @@
+{
+  "parallelAgents": 3,
+  "labels": {
+    "autoMerge": "auto-merge",
+    "aiGenerated": "ai-generated",
+    "triaged": "triaged"
+  },
+  "components": {
+    "proxy": ["proxy/**"],
+    "web": ["web/**"],
+    "docker": ["compose/**", "Dockerfile", "Dockerfile.*", "docker-compose.yml"],
+    "unknown": ["**/*"]
+  },
+  "agentRouting": {
+    "proxy": "TODO: plug in proxy-focused agent runner",
+    "web": "TODO: plug in web-focused agent runner",
+    "docker": "TODO: plug in infra-focused agent runner",
+    "unknown": "TODO: plug in fallback agent runner"
+  }
+}

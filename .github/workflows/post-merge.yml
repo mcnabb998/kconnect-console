@@ -1,0 +1,73 @@
+name: Post-merge cleanup
+
+on:
+  pull_request:
+    types:
+      - closed
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  cleanup:
+    if: >-
+      ${{ github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'ai/issue-') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout ai/state
+        uses: actions/checkout@v4
+        with:
+          ref: ai/state
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Update queue and locks
+        env:
+          BRANCH_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          import { join } from 'node:path';
+
+          const branchRef = process.env.BRANCH_REF || '';
+          const match = branchRef.match(/ai\/issue-(\d+)/);
+          if (!match) {
+            console.log('Branch does not match ai/issue-* pattern.');
+            process.exit(0);
+          }
+          const issueNumber = Number(match[1]);
+          const queuePath = join('.ai', 'queue.json');
+          const locksPath = join('.ai', 'locks.json');
+
+          function readJson(path) {
+            try {
+              return JSON.parse(readFileSync(path, 'utf8'));
+            } catch (error) {
+              if (error.code === 'ENOENT') {
+                return [];
+              }
+              throw error;
+            }
+          }
+
+          function writeJson(path, data) {
+            writeFileSync(path, JSON.stringify(data, null, 2) + '\n', 'utf8');
+          }
+
+          const queue = readJson(queuePath).filter((entry) => entry.number !== issueNumber);
+          const locks = readJson(locksPath).filter((lock) => lock.issue !== issueNumber);
+
+          writeJson(queuePath, queue);
+          writeJson(locksPath, locks);
+          NODE
+
+      - name: Commit state cleanup
+        run: |
+          if git status --short | grep -E '\.ai/(queue|locks)\.json'; then
+            git config user.name 'github-actions[bot]'
+            git config user.email 'github-actions[bot]@users.noreply.github.com'
+            git commit -am 'chore: cleanup AI state after merge'
+            git push origin HEAD:ai/state
+          else
+            echo 'No state updates required.'
+          fi
