@@ -86,8 +86,9 @@ describe('Settings Page', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByText('Error Loading Settings')).toBeInTheDocument();
+        expect(screen.getByText('Cannot Connect to Proxy Service')).toBeInTheDocument();
         expect(screen.getByText('Failed to fetch summary')).toBeInTheDocument();
+        expect(screen.getByText('The proxy service is not running or not accessible.')).toBeInTheDocument();
       });
     });
   });
@@ -133,7 +134,7 @@ describe('Settings Page', () => {
       await user.click(pluginsTab);
 
       await waitFor(() => {
-        expect(screen.getByText('Error Loading Settings')).toBeInTheDocument();
+        expect(screen.getByText('Cannot Connect to Proxy Service')).toBeInTheDocument();
         expect(screen.getByText('Failed to fetch plugins')).toBeInTheDocument();
       });
     });
@@ -201,7 +202,7 @@ describe('Settings Page', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByText('Error Loading Settings')).toBeInTheDocument();
+        expect(screen.getByText('Cannot Connect to Proxy Service')).toBeInTheDocument();
         expect(screen.getByText('Network error')).toBeInTheDocument();
       });
     });
