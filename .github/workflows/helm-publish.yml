@@ -36,7 +36,7 @@ jobs:
         run: |
           cd helm
           helm package kconnect-console
-          helm repo index . --url https://mcnabb998.github.io/kconnect-console/helm
+          helm repo index . --url https://mcnabb998.github.io/kconnect-console
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

@@ -50,7 +50,7 @@
 
 2. **Helm Publishing PR** - `feat/helm-chart-publishing`
    - GitHub Pages workflow for Helm chart hosting
-   - Users can install via: `helm repo add kconnect-console https://mcnabb998.github.io/kconnect-console/helm`
+   - Users can install via: `helm repo add kconnect-console https://mcnabb998.github.io/kconnect-console`
 
 ### Manual Steps Required
 - [ ] Enable GitHub Pages in repository settings (after Helm PR merges)

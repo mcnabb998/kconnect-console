@@ -3,7 +3,7 @@ entries:
   kconnect-console:
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2025-10-21T20:52:48.61402-05:00"
+    created: "2025-10-21T21:06:14.6260856-05:00"
     description: A lightweight management UI for Apache Kafka Connect
     digest: 3d457d75cec3a001c19b167f1cde91e64a9b49b27c69c229b6d4fc7f9a1cde72
     home: https://github.com/mcnabb998/kconnect-console
@@ -22,6 +22,6 @@ entries:
     - https://github.com/mcnabb998/kconnect-console
     type: application
     urls:
-    - https://mcnabb998.github.io/kconnect-console/helm/kconnect-console-1.0.0.tgz
+    - https://mcnabb998.github.io/kconnect-console/kconnect-console-1.0.0.tgz
     version: 1.0.0
-generated: "2025-10-21T20:52:48.6124866-05:00"
+generated: "2025-10-21T21:06:14.6250479-05:00"
