@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 
 import { SkeletonCard, SkeletonLine, SkeletonSurface, SkeletonTableRow } from '@/components/Skeleton';
+import { SectionErrorBoundary } from '../components/SectionErrorBoundary';
 
 import { ConnectorSummary, useMonitoringSummary } from './MonitoringSummaryProvider';
 
@@ -490,70 +491,76 @@ export default function MonitoringPage() {
 
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <header className="mb-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-500">Cluster: {summary?.clusterId ?? clusterId}</p>
-          <h1 className="mt-1 text-3xl font-bold text-gray-900">Monitoring Overview</h1>
-          <p className="mt-2 text-sm text-gray-600">Uptime: {uptime}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <span
-            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
-              isPolling ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
-            }`}
-          >
-            <span className="relative flex h-2 w-2">
-              <span
-                className={`absolute inline-flex h-full w-full rounded-full ${
-                  isPolling ? 'bg-green-400 opacity-75 animate-ping' : 'bg-gray-400 opacity-30'
-                }`}
-              />
-              <span
-                className={`relative inline-flex h-2 w-2 rounded-full ${
-                  isPolling ? 'bg-green-500' : 'bg-gray-500'
-                }`}
-              />
+      <SectionErrorBoundary section="Monitoring Header">
+        <header className="mb-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-500">Cluster: {summary?.clusterId ?? clusterId}</p>
+            <h1 className="mt-1 text-3xl font-bold text-gray-900">Monitoring Overview</h1>
+            <p className="mt-2 text-sm text-gray-600">Uptime: {uptime}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <span
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
+                isPolling ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
+              }`}
+            >
+              <span className="relative flex h-2 w-2">
+                <span
+                  className={`absolute inline-flex h-full w-full rounded-full ${
+                    isPolling ? 'bg-green-400 opacity-75 animate-ping' : 'bg-gray-400 opacity-30'
+                  }`}
+                />
+                <span
+                  className={`relative inline-flex h-2 w-2 rounded-full ${
+                    isPolling ? 'bg-green-500' : 'bg-gray-500'
+                  }`}
+                />
+              </span>
+              {isPolling ? 'Live' : 'Paused'}
             </span>
-            {isPolling ? 'Live' : 'Paused'}
-          </span>
-          <button
-            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-            onClick={isPolling ? pausePolling : resumePolling}
-            type="button"
-          >
-            {isPolling ? 'Pause' : 'Resume'} monitoring
-          </button>
-        </div>
-      </header>
+            <button
+              className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              onClick={isPolling ? pausePolling : resumePolling}
+              type="button"
+            >
+              {isPolling ? 'Pause' : 'Resume'} monitoring
+            </button>
+          </div>
+        </header>
+      </SectionErrorBoundary>
 
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">Total connectors</p>
-          <p className="mt-2 text-2xl font-semibold text-gray-900">{totalConnectors}</p>
+      <SectionErrorBoundary section="Summary Cards">
+        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-gray-500">Total connectors</p>
+            <p className="mt-2 text-2xl font-semibold text-gray-900">{totalConnectors}</p>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-gray-500">🟢 Running</p>
+            <p className="mt-2 text-2xl font-semibold text-green-700">{running}</p>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-gray-500">🟡 Degraded</p>
+            <p className="mt-2 text-2xl font-semibold text-yellow-700">{degraded}</p>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-gray-500">🔴 Failed</p>
+            <p className="mt-2 text-2xl font-semibold text-red-700">{failed}</p>
+          </div>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">🟢 Running</p>
-          <p className="mt-2 text-2xl font-semibold text-green-700">{running}</p>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">🟡 Degraded</p>
-          <p className="mt-2 text-2xl font-semibold text-yellow-700">{degraded}</p>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">🔴 Failed</p>
-          <p className="mt-2 text-2xl font-semibold text-red-700">{failed}</p>
-        </div>
-      </div>
+      </SectionErrorBoundary>
 
       {failed > 0 && (
-        <div className="mb-8 rounded-lg border border-red-200 bg-red-50 p-5">
-          <h2 className="text-lg font-semibold text-red-700">Attention required</h2>
-          <p className="mt-2 text-sm text-red-600">
-            {failed === 1
-              ? '1 connector is reporting a failure. Investigate the error details below.'
-              : `${failed} connectors are reporting failures. Investigate the error details below.`}
-          </p>
-        </div>
+        <SectionErrorBoundary section="Alert Banner">
+          <div className="mb-8 rounded-lg border border-red-200 bg-red-50 p-5">
+            <h2 className="text-lg font-semibold text-red-700">Attention required</h2>
+            <p className="mt-2 text-sm text-red-600">
+              {failed === 1
+                ? '1 connector is reporting a failure. Investigate the error details below.'
+                : `${failed} connectors are reporting failures. Investigate the error details below.`}
+            </p>
+          </div>
+        </SectionErrorBoundary>
       )}
 
       <div className="xl:hidden">
@@ -579,13 +586,19 @@ export default function MonitoringPage() {
         </div>
 
         <div className="space-y-6">
-          {activeTab === 'overview' ? connectorsContent : problemsContent}
+          <SectionErrorBoundary section="Connectors Table">
+            {activeTab === 'overview' ? connectorsContent : problemsContent}
+          </SectionErrorBoundary>
         </div>
       </div>
 
       <div className="hidden xl:grid xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] xl:gap-8">
-        <div className="space-y-6">{connectorsContent}</div>
-        {problemsContent}
+        <SectionErrorBoundary section="Connectors Overview">
+          <div className="space-y-6">{connectorsContent}</div>
+        </SectionErrorBoundary>
+        <SectionErrorBoundary section="Problems Panel">
+          {problemsContent}
+        </SectionErrorBoundary>
       </div>
     </section>
   );
