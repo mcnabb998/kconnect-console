@@ -155,3 +155,7 @@ DEV-MODE*.md
 helm/*.tgz
 helm/index.yaml
 web/demo-error-categorization.js
+
+# Go test coverage files
+*.out
+coverage.out
