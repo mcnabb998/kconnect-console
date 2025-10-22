@@ -109,4 +109,49 @@ describe('Home page', () => {
       expect(screen.getByText('Recovered Connector')).toBeInTheDocument();
     });
   });
+
+  it('has proper aria-labelledby associations for checkboxes', async () => {
+    // Mock responses for connectors list
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ['Test-Connector-1', 'Test-Connector-2']
+    } as Response);
+
+    // Mock responses for status endpoints
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        connector: { state: 'RUNNING', worker_id: 'worker-1' },
+        tasks: []
+      })
+    } as Response);
+
+    await act(async () => {
+      render(<Home />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Test-Connector-1')).toBeInTheDocument();
+      expect(screen.getByText('Test-Connector-2')).toBeInTheDocument();
+    });
+
+    // Get connector name elements
+    const connector1Link = screen.getByText('Test-Connector-1');
+    const connector2Link = screen.getByText('Test-Connector-2');
+
+    // Verify they have IDs
+    expect(connector1Link.closest('a')).toHaveAttribute('id', 'connector-name-Test-Connector-1');
+    expect(connector2Link.closest('a')).toHaveAttribute('id', 'connector-name-Test-Connector-2');
+
+    // Get checkboxes - exclude the select-all checkbox
+    const checkboxes = screen.getAllByRole('checkbox').filter(cb => 
+      cb.getAttribute('aria-labelledby') !== null
+    );
+
+    expect(checkboxes.length).toBe(2);
+
+    // Verify aria-labelledby matches the connector name IDs
+    expect(checkboxes[0]).toHaveAttribute('aria-labelledby', 'connector-name-Test-Connector-1');
+    expect(checkboxes[1]).toHaveAttribute('aria-labelledby', 'connector-name-Test-Connector-2');
+  });
 });
