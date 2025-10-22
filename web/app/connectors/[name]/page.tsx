@@ -47,9 +47,12 @@ export default function ConnectorDetail() {
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchConnectorDetails = useCallback(async () => {
+  const fetchConnectorDetails = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      // Only show loading skeleton on initial load, not during auto-refresh
+      if (!silent) {
+        setLoading(true);
+      }
       setError(null);
 
       const [statusRes, configRes] = await Promise.all([
@@ -69,7 +72,9 @@ export default function ConnectorDetail() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [name, cluster]);
 
@@ -118,8 +123,9 @@ export default function ConnectorDetail() {
     }, 1000);
 
     // Refresh timer (triggers every 10 seconds)
+    // Use silent=true to avoid remounting the UI during background refresh
     refreshIntervalRef.current = setInterval(() => {
-      fetchConnectorDetails();
+      fetchConnectorDetails(true);
     }, 10000);
 
     // Cleanup on unmount or when autoRefresh changes
@@ -150,9 +156,9 @@ export default function ConnectorDetail() {
       // Show success toast
       success(`Connector ${action}d successfully`);
 
-      // Refresh details after action
+      // Refresh details after action (silent to avoid UI remount)
       setTimeout(() => {
-        fetchConnectorDetails();
+        fetchConnectorDetails(true);
         setActionLoading(null);
       }, 1000);
     } catch (err) {
@@ -456,7 +462,7 @@ export default function ConnectorDetail() {
                 initialConnector={config}
                 onConfigUpdated={(updated) => {
                   setConfig(updated);
-                  fetchConnectorDetails();
+                  fetchConnectorDetails(true);
                 }}
               />
             </SectionErrorBoundary>
