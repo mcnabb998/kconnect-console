@@ -12,6 +12,7 @@
 - 📊 **Real-time monitoring** of connectors and tasks
 - 🎮 **Full lifecycle management** (create, pause, resume, restart, delete)
 - 🔄 **Bulk operations** across multiple connectors
+- 📝 **Audit logging** tracks all changes with timestamps and configuration diffs
 - 🎨 **Modern UI** with auto-refresh, toast notifications, and loading states
 - 🔒 **Security** with credential redaction and CORS configuration
 
@@ -86,8 +87,9 @@ docker compose up -d  # Starts everything including Kafka
 ## Features
 
 ### Proxy Service (Go)
-- **Routes**: `/api/:cluster/connectors*`, `/api/:cluster/monitoring/summary`, `/health`
+- **Routes**: `/api/:cluster/connectors*`, `/api/:cluster/monitoring/summary`, `/api/:cluster/audit-logs`, `/health`
 - **Security**: Automatic redaction of passwords, secrets, tokens, API keys in responses
+- **Audit Logging**: Tracks all connector CRUD operations with timestamps, IP addresses, and configuration diffs
 - **Performance**: Response caching (10s TTL), parallel request handling, worker pools
 - **Health Checks**: Verifies Kafka Connect connectivity, returns proper status codes (200/503)
 - **CORS**: Configurable origins with comma-separated list support
@@ -98,6 +100,7 @@ docker compose up -d  # Starts everything including Kafka
 - **Connector Management**: List, create, pause, resume, restart, delete connectors
 - **Bulk Operations**: Perform actions on multiple connectors simultaneously
 - **Real-Time Monitoring**: Live connector and task status updates with 10-second polling
+- **Audit Logs**: Complete history of connector changes with filtering, search, and export (CSV/JSON)
 - **Templates**: Pre-configured connector templates (Postgres, MongoDB, S3, Elasticsearch, etc.)
 - **Security**: Automatic masking of sensitive configuration values
 - **Transformations Tab**: View Single Message Transforms (SMTs) configured on connectors
