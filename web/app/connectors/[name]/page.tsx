@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { LoadingButton } from '@/components/LoadingButton';
 import { SkeletonBadge, SkeletonCard, SkeletonLine } from '@/components/Skeleton';
 import { ToastContainer } from '@/components/ToastContainer';
+import { SectionErrorBoundary } from '../../components/SectionErrorBoundary';
 import TransformationsTab from './TransformationsTab';
 import type { ConnectorGetResponse } from '@/types/connect';
 import { getProxyUrl, API_CONFIG } from '@/lib/config';
@@ -236,23 +237,25 @@ export default function ConnectorDetail() {
     <>
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <div className="min-h-screen bg-gray-50">
-        <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Link href="/" className="text-blue-500 hover:text-blue-700 mr-4">
-                ← Back
-              </Link>
-              <h1 className="text-3xl font-bold text-gray-900">{name}</h1>
+        <SectionErrorBoundary section="Connector Header">
+          <header className="bg-white shadow">
+          <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Link href="/" className="text-blue-500 hover:text-blue-700 mr-4">
+                  ← Back
+                </Link>
+                <h1 className="text-3xl font-bold text-gray-900">{name}</h1>
+              </div>
+              {status && (
+                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStateColor(status.connector.state)}`}>
+                  {status.connector.state}
+                </span>
+              )}
             </div>
-            {status && (
-              <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStateColor(status.connector.state)}`}>
-                {status.connector.state}
-              </span>
-            )}
           </div>
-        </div>
-      </header>
+        </header>
+        </SectionErrorBoundary>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
@@ -270,107 +273,115 @@ export default function ConnectorDetail() {
                 </div>
               )}
 
-              <div className="flex flex-wrap gap-2">
-                <LoadingButton
-                  onClick={() => handleAction('pause')}
-                  disabled={status?.connector.state === 'PAUSED' || actionLoading !== null}
-                  loading={actionLoading === 'pause'}
-                  loadingText="Pausing..."
-                  className="bg-yellow-500 hover:bg-yellow-700 focus-visible:outline-yellow-500"
-                >
-                  Pause
-                </LoadingButton>
-                <LoadingButton
-                  onClick={() => handleAction('resume')}
-                  disabled={status?.connector.state !== 'PAUSED' || actionLoading !== null}
-                  loading={actionLoading === 'resume'}
-                  loadingText="Resuming..."
-                  className="bg-green-500 hover:bg-green-700 focus-visible:outline-green-500"
-                >
-                  Resume
-                </LoadingButton>
-                <LoadingButton
-                  onClick={() => handleAction('restart')}
-                  disabled={actionLoading !== null}
-                  loading={actionLoading === 'restart'}
-                  loadingText="Restarting..."
-                  className="bg-blue-500 hover:bg-blue-700 focus-visible:outline-blue-500"
-                >
-                  Restart
-                </LoadingButton>
-                <LoadingButton
-                  onClick={handleDelete}
-                  disabled={actionLoading !== null}
-                  loading={actionLoading === 'delete'}
-                  loadingText="Deleting..."
-                  variant="danger"
-                  className="ml-auto"
-                >
-                  Delete
-                </LoadingButton>
-              </div>
+              <SectionErrorBoundary section="Action Buttons">
+                <div className="flex flex-wrap gap-2">
+                  <LoadingButton
+                    onClick={() => handleAction('pause')}
+                    disabled={status?.connector.state === 'PAUSED' || actionLoading !== null}
+                    loading={actionLoading === 'pause'}
+                    loadingText="Pausing..."
+                    className="bg-yellow-500 hover:bg-yellow-700 focus-visible:outline-yellow-500"
+                  >
+                    Pause
+                  </LoadingButton>
+                  <LoadingButton
+                    onClick={() => handleAction('resume')}
+                    disabled={status?.connector.state !== 'PAUSED' || actionLoading !== null}
+                    loading={actionLoading === 'resume'}
+                    loadingText="Resuming..."
+                    className="bg-green-500 hover:bg-green-700 focus-visible:outline-green-500"
+                  >
+                    Resume
+                  </LoadingButton>
+                  <LoadingButton
+                    onClick={() => handleAction('restart')}
+                    disabled={actionLoading !== null}
+                    loading={actionLoading === 'restart'}
+                    loadingText="Restarting..."
+                    className="bg-blue-500 hover:bg-blue-700 focus-visible:outline-blue-500"
+                  >
+                    Restart
+                  </LoadingButton>
+                  <LoadingButton
+                    onClick={handleDelete}
+                    disabled={actionLoading !== null}
+                    loading={actionLoading === 'delete'}
+                    loadingText="Deleting..."
+                    variant="danger"
+                    className="ml-auto"
+                  >
+                    Delete
+                  </LoadingButton>
+                </div>
+              </SectionErrorBoundary>
 
-              {status && (
-                <div className="bg-white shadow rounded-lg p-6">
-                  <h2 className="text-xl font-semibold mb-4">Status</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Connector State</p>
-                      <p className="mt-1 text-lg">{status.connector.state}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Worker ID</p>
-                      <p className="mt-1 text-lg">{status.connector.worker_id}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Type</p>
-                      <p className="mt-1 text-lg">{status.type}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Tasks</p>
-                      <p className="mt-1 text-lg">{status.tasks.length}</p>
-                    </div>
-                  </div>
-
-                  {status.tasks.length > 0 && (
-                    <div className="mt-6">
-                      <h3 className="text-lg font-semibold mb-3">Tasks</h3>
-                      <div className="space-y-2">
-                        {status.tasks.map((task) => (
-                          <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                            <div>
-                              <span className="font-medium">Task {task.id}</span>
-                              <span className="text-gray-500 ml-2">{task.worker_id}</span>
-                            </div>
-                            <span className={`px-2 py-1 rounded text-xs font-semibold ${getStateColor(task.state)}`}>
-                              {task.state}
-                            </span>
-                          </div>
-                        ))}
+              <SectionErrorBoundary section="Status Details">
+                {status && (
+                  <div className="bg-white shadow rounded-lg p-6">
+                    <h2 className="text-xl font-semibold mb-4">Status</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Connector State</p>
+                        <p className="mt-1 text-lg">{status.connector.state}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Worker ID</p>
+                        <p className="mt-1 text-lg">{status.connector.worker_id}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Type</p>
+                        <p className="mt-1 text-lg">{status.type}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Tasks</p>
+                        <p className="mt-1 text-lg">{status.tasks.length}</p>
                       </div>
                     </div>
-                  )}
-                </div>
-              )}
 
-              {config && (
-                <div className="bg-white shadow rounded-lg p-6">
-                  <h2 className="text-xl font-semibold mb-4">Configuration</h2>
-                  <div className="bg-gray-50 rounded p-4 overflow-x-auto">
-                    <pre className="text-sm">{JSON.stringify(config.config, null, 2)}</pre>
+                    {status.tasks.length > 0 && (
+                      <div className="mt-6">
+                        <h3 className="text-lg font-semibold mb-3">Tasks</h3>
+                        <div className="space-y-2">
+                          {status.tasks.map((task) => (
+                            <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                              <div>
+                                <span className="font-medium">Task {task.id}</span>
+                                <span className="text-gray-500 ml-2">{task.worker_id}</span>
+                              </div>
+                              <span className={`px-2 py-1 rounded text-xs font-semibold ${getStateColor(task.state)}`}>
+                                {task.state}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                )}
+              </SectionErrorBoundary>
+
+              <SectionErrorBoundary section="Configuration">
+                {config && (
+                  <div className="bg-white shadow rounded-lg p-6">
+                    <h2 className="text-xl font-semibold mb-4">Configuration</h2>
+                    <div className="bg-gray-50 rounded p-4 overflow-x-auto">
+                      <pre className="text-sm">{JSON.stringify(config.config, null, 2)}</pre>
+                    </div>
+                  </div>
+                )}
+              </SectionErrorBoundary>
             </div>
           ) : (
-            <TransformationsTab
-              name={name}
-              initialConnector={config}
-              onConfigUpdated={(updated) => {
-                setConfig(updated);
-                fetchConnectorDetails();
-              }}
-            />
+            <SectionErrorBoundary section="Transformations Tab">
+              <TransformationsTab
+                name={name}
+                initialConnector={config}
+                onConfigUpdated={(updated) => {
+                  setConfig(updated);
+                  fetchConnectorDetails();
+                }}
+              />
+            </SectionErrorBoundary>
           )}
         </div>
       </main>
