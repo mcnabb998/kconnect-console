@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -47,6 +47,32 @@ export default function ConnectorDetail() {
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  const fetchConnectorDetails = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [statusRes, configRes] = await Promise.all([
+        fetch(`${PROXY}/api/${cluster}/connectors/${name}/status`),
+        fetch(`${PROXY}/api/${cluster}/connectors/${name}`)
+      ]);
+
+      if (!statusRes.ok || !configRes.ok) {
+        throw new Error('Failed to fetch connector details');
+      }
+
+      const statusData = await statusRes.json();
+      const configData: ConnectorGetResponse = await configRes.json();
+
+      setStatus(statusData);
+      setConfig(configData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  }, [name, cluster]);
+
   useEffect(() => {
     if (name) {
       fetchConnectorDetails();
@@ -59,7 +85,7 @@ export default function ConnectorDetail() {
         router.replace(`/connectors/${name}`, undefined);
       }
     }
-  }, [name, router, success]);
+  }, [name, router, success, fetchConnectorDetails]);
 
   // Auto-refresh logic
   useEffect(() => {
@@ -84,7 +110,7 @@ export default function ConnectorDetail() {
     // Countdown timer (updates every second)
     countdownIntervalRef.current = setInterval(() => {
       setNextRefreshIn((prev) => {
-        if (prev <= 1) {
+        if (prev <= 0) {
           return 10; // Reset to 10 when it hits 0
         }
         return prev - 1;
@@ -105,33 +131,7 @@ export default function ConnectorDetail() {
         clearInterval(countdownIntervalRef.current);
       }
     };
-  }, [autoRefresh, name]);
-
-  const fetchConnectorDetails = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const [statusRes, configRes] = await Promise.all([
-        fetch(`${PROXY}/api/${cluster}/connectors/${name}/status`),
-        fetch(`${PROXY}/api/${cluster}/connectors/${name}`)
-      ]);
-
-      if (!statusRes.ok || !configRes.ok) {
-        throw new Error('Failed to fetch connector details');
-      }
-
-      const statusData = await statusRes.json();
-      const configData: ConnectorGetResponse = await configRes.json();
-
-      setStatus(statusData);
-      setConfig(configData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [autoRefresh, name, fetchConnectorDetails]);
 
   const handleAction = async (action: 'pause' | 'resume' | 'restart') => {
     try {
