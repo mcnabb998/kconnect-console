@@ -141,6 +141,10 @@ vite.config.ts.timestamp-*
 # Go binaries
 proxy/proxy
 
+# Go test coverage
+coverage.out
+*.out
+
 # Claude Code settings (personal)
 .claude/
 
