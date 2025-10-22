@@ -152,7 +152,7 @@ export const jdbcFieldHelp: PluginFieldHelp = {
     tips: ['Larger batches = better throughput but more memory', 'Start with default (100) and tune as needed']
   },
   'auto.create': {
-    description: 'Automatically create tables if they don\'t exist',
+    description: "Automatically create tables if they don't exist",
     examples: ['true', 'false'],
     tips: ['Useful for development', 'Consider disabling in production for safety']
   },
@@ -278,7 +278,7 @@ export const datagenFieldHelp: PluginFieldHelp = {
   'kafka.topic': {
     description: 'Target Kafka topic for generated data',
     examples: ['test-data', 'sample-orders', 'demo-events'],
-    tips: ['Topic will be auto-created if it doesn\'t exist', 'Use descriptive names for test data']
+    tips: ["Topic will be auto-created if it doesn't exist", 'Use descriptive names for test data']
   },
   'quickstart': {
     description: 'Predefined data template',

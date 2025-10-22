@@ -65,7 +65,7 @@ export default function Tooltip({
   }, [isVisible, position]);
 
   const getPositionClasses = () => {
-    const baseClasses = 'fixed z-[9999] pointer-events-none';
+    const baseClasses = 'fixed z-[9999]';
 
     switch (actualPosition) {
       case 'top':
@@ -115,6 +115,8 @@ export default function Tooltip({
       {isVisible && (
         <div
           ref={tooltipRef}
+          onMouseEnter={() => setIsVisible(true)}
+          onMouseLeave={() => setIsVisible(false)}
           className={getPositionClasses()}
           style={{
             maxWidth,
