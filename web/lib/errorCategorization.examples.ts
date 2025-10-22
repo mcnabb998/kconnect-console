@@ -23,7 +23,7 @@ async function exampleConnectionRefused() {
       console.log('Summary:', getErrorSummary(error.categorized)); // "Service not reachable"
       console.log('Message:', error.message);
       console.log('Troubleshooting:');
-      error.troubleshooting.forEach((tip, idx) => {
+      error.troubleshooting.forEach((tip: string, idx: number) => {
         console.log(`  ${idx + 1}. ${tip}`);
       });
       // Output:
@@ -47,7 +47,7 @@ async function exampleTimeout() {
       console.log('Error Type:', error.type); // NetworkErrorType.TIMEOUT
       console.log('Summary:', getErrorSummary(error.categorized)); // "Request timed out"
       console.log('Troubleshooting:');
-      error.troubleshooting.forEach((tip, idx) => {
+      error.troubleshooting.forEach((tip: string, idx: number) => {
         console.log(`  ${idx + 1}. ${tip}`);
       });
       // Output:
@@ -69,7 +69,7 @@ async function exampleDNSFailure() {
       console.log('Error Type:', error.type); // NetworkErrorType.DNS_FAILURE
       console.log('Summary:', getErrorSummary(error.categorized)); // "Hostname not found"
       console.log('Troubleshooting:');
-      error.troubleshooting.forEach((tip, idx) => {
+      error.troubleshooting.forEach((tip: string, idx: number) => {
         console.log(`  ${idx + 1}. ${tip}`);
       });
       // Output:
@@ -91,7 +91,7 @@ async function exampleSSLError() {
       console.log('Error Type:', error.type); // NetworkErrorType.SSL_TLS_ERROR
       console.log('Summary:', getErrorSummary(error.categorized)); // "Certificate error"
       console.log('Troubleshooting:');
-      error.troubleshooting.forEach((tip, idx) => {
+      error.troubleshooting.forEach((tip: string, idx: number) => {
         console.log(`  ${idx + 1}. ${tip}`);
       });
       // Output:
@@ -152,7 +152,7 @@ async function exampleAPICall() {
       console.error('API call failed:', error.message);
       console.error('Error type:', error.type);
       console.error('Troubleshooting:');
-      error.troubleshooting.forEach((tip) => console.error(`  - ${tip}`));
+      error.troubleshooting.forEach((tip: string) => console.error(`  - ${tip}`));
       
       // You can also show a user-friendly summary
       const summary = getErrorSummary(error.categorized);

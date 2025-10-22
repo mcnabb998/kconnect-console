@@ -6,7 +6,7 @@
  * for better troubleshooting.
  */
 
-import { categorizeNetworkError, CategorizedError } from './errorCategorization';
+import { categorizeNetworkError, CategorizedError, NetworkErrorType } from './errorCategorization';
 
 const DEFAULT_TIMEOUT_MS = 30000; // 30 seconds
 
@@ -112,9 +112,19 @@ export async function fetchJsonWithTimeout<T = any>(
 }
 
 /**
+ * Enhanced error type with categorization information
+ */
+export interface CategorizedErrorObject extends Error {
+  categorized: CategorizedError;
+  type: NetworkErrorType;
+  troubleshooting: string[];
+  originalError: Error;
+}
+
+/**
  * Type guard to check if an error has categorization information
  */
-export function isCategorizedError(error: unknown): error is Error & { categorized: CategorizedError } {
+export function isCategorizedError(error: unknown): error is CategorizedErrorObject {
   return (
     error instanceof Error &&
     'categorized' in error &&
