@@ -1,0 +1,73 @@
+name: Lock check
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  verify-locks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch ai/state locks
+        run: |
+          git fetch origin ai/state:ai/state || echo 'ai/state branch not found'
+          git show ai/state:.ai/locks.json > .ai/locks.json || echo '[]' > .ai/locks.json
+
+      - name: Determine changed files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff --name-only "$BASE_SHA" "$HEAD_SHA" > .ai/changed-files.txt
+
+      - name: Install dependencies
+        run: npm install minimatch@9
+
+      - name: Check for locked files
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          import { Minimatch } from 'minimatch';
+
+          const locksRaw = await readFile('.ai/locks.json', 'utf8').catch(() => '[]');
+          const locks = JSON.parse(locksRaw || '[]');
+          const changedRaw = await readFile('.ai/changed-files.txt', 'utf8').catch(() => '');
+          const changedFiles = changedRaw
+            .split(/\r?\n/)
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0);
+
+          const conflicts = [];
+          for (const file of changedFiles) {
+            for (const lock of locks) {
+              for (const pattern of lock.files ?? []) {
+                const matcher = new Minimatch(pattern, { dot: true });
+                if (matcher.match(file)) {
+                  conflicts.push({ file, lock });
+                  break;
+                }
+              }
+            }
+          }
+
+          if (conflicts.length > 0) {
+            console.error('The following files are locked by ai/state:');
+            for (const conflict of conflicts) {
+              console.error(`- ${conflict.file} (issue #${conflict.lock.issue})`);
+            }
+            process.exit(1);
+          } else {
+            console.log('No locked file conflicts detected.');
+          }
+          NODE

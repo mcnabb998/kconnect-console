@@ -1,0 +1,47 @@
+name: PR validation
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        if: ${{ hashFiles('proxy/go.mod') != '' }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Run Go tests
+        if: ${{ hashFiles('proxy/go.mod') != '' }}
+        run: |
+          cd proxy
+          go test ./...
+
+      - name: Set up Node.js
+        if: ${{ hashFiles('web/package.json') != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install web dependencies
+        if: ${{ hashFiles('web/package.json') != '' }}
+        run: |
+          cd web
+          npm ci
+
+      - name: Run web tests
+        if: ${{ hashFiles('web/package.json') != '' }}
+        run: |
+          cd web
+          npm test -- --watch=false

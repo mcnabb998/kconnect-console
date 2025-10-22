@@ -1,0 +1,83 @@
+name: Slash commands
+
+on:
+  issue_comment:
+    types:
+      - created
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: read
+
+jobs:
+  assign-aider:
+    if: >-
+      ${{ startsWith(github.event.comment.body, '/assign-aider') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout ai/state
+        uses: actions/checkout@v4
+        with:
+          ref: ai/state
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Requeue issue
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          import { join } from 'node:path';
+
+          const issueNumber = Number(process.env.ISSUE_NUMBER);
+          const queuePath = join('.ai', 'queue.json');
+          const locksPath = join('.ai', 'locks.json');
+
+          const readJson = (path) => {
+            try {
+              return JSON.parse(readFileSync(path, 'utf8'));
+            } catch (error) {
+              if (error.code === 'ENOENT') return [];
+              throw error;
+            }
+          };
+
+          const writeJson = (path, data) => {
+            writeFileSync(path, JSON.stringify(data, null, 2) + '\n', 'utf8');
+          };
+
+          const queue = readJson(queuePath);
+          const entry = queue.find((item) => item.number === issueNumber);
+          if (entry) {
+            entry.status = 'queued';
+            delete entry.started_at;
+          }
+          writeJson(queuePath, queue);
+
+          const locks = readJson(locksPath).filter((lock) => lock.issue !== issueNumber);
+          writeJson(locksPath, locks);
+          NODE
+
+      - name: Commit queue update
+        run: |
+          if git status --short | grep -E '\.ai/(queue|locks)\.json'; then
+            git config user.name 'github-actions[bot]'
+            git config user.email 'github-actions[bot]@users.noreply.github.com'
+            git commit -am 'chore: requeue issue via slash command'
+            git push origin HEAD:ai/state
+          else
+            echo 'No queue updates required.'
+          fi
+
+      - name: Respond to command
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GH_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: 'Issue requeued and locks cleared. Scheduler will pick it up shortly.'
+            });

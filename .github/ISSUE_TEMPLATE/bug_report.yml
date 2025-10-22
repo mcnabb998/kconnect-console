@@ -1,0 +1,55 @@
+name: Bug report
+description: Report a defect in kconnect-console.
+labels:
+  - type:bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping us improve kconnect-console. Provide as much detail as possible so the automation can triage the issue.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which area is most impacted?
+      options:
+        - web
+        - proxy
+        - docker
+        - unknown
+      default: web
+    validations:
+      required: true
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Complexity
+      description: Estimated size of the fix.
+      options:
+        - S
+        - M
+        - L
+      default: S
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the bug and steps to reproduce.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: false
+  - type: textarea
+    id: files
+    attributes:
+      label: Likely files or directories
+      description: Optional hints such as file paths or globs.
+      placeholder: web/components/**/*.tsx
+    validations:
+      required: false
