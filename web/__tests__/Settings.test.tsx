@@ -86,9 +86,9 @@ describe('Settings Page', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByText('Cannot Connect to Proxy Service')).toBeInTheDocument();
-        expect(screen.getByText('Failed to fetch summary')).toBeInTheDocument();
-        expect(screen.getByText('The proxy service is not running or not accessible.')).toBeInTheDocument();
+        // ErrorDisplay component shows the error message and provides retry
+        expect(screen.getByText('Service not reachable')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
       });
     });
   });
@@ -203,8 +203,9 @@ describe('Settings Page', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByText('Cannot Connect to Proxy Service')).toBeInTheDocument();
-        expect(screen.getByText('Network error')).toBeInTheDocument();
+        // ErrorDisplay component shows the error
+        expect(screen.getByText('Network issue')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
       });
     });
 
@@ -214,8 +215,9 @@ describe('Settings Page', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByText('Error Loading Settings')).toBeInTheDocument();
-        expect(screen.getByText('Unknown error')).toBeInTheDocument();
+        // ErrorDisplay component shows unknown error with proper structure
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+        expect(screen.getByText('Unknown error', { selector: 'h3' })).toBeInTheDocument();
       });
     });
   });
