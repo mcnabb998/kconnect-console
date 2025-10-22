@@ -24,7 +24,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: main
+          # Use the release tag when triggered by release, otherwise use default SHA
+          ref: ${{ github.event.release.tag_name || github.sha }}
 
       - name: Setup Helm
         uses: azure/setup-helm@v4
