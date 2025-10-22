@@ -226,7 +226,13 @@ export default function NewConnectorPage() {
 
     const isValid = await validateConfiguration();
     if (!isValid) {
-      setError('Configuration validation failed. Please check the errors above and fix them before creating the connector.');
+      // Set appropriate error message based on whether we have validation errors
+      if (Object.keys(validationErrors).length > 0) {
+        setError('Configuration validation failed. Please fix the validation errors below before creating the connector.');
+      } else if (!error) {
+        // Only set generic error if there isn't already a more specific error from validateConfiguration
+        setError('Configuration validation failed. Please review your configuration and try again.');
+      }
       // Scroll to top to show errors
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;

@@ -86,12 +86,11 @@ export default function ConnectorDetail() {
       // Check if redirected from creation
       if (searchParams.get('created') === 'true') {
         success(`Connector "${name}" created successfully`);
-        // Remove the query param from URL without full reload
-        const newUrl = `/connectors/${encodeURIComponent(name)}`;
-        window.history.replaceState({}, '', newUrl);
+        // Remove the query param from URL using Next.js router
+        router.replace(`/connectors/${encodeURIComponent(name)}`, { scroll: false });
       }
     }
-  }, [name, searchParams, success, fetchConnectorDetails]);
+  }, [name, searchParams, success, fetchConnectorDetails, router]);
 
   // Auto-refresh logic
   useEffect(() => {
