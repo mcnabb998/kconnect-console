@@ -39,6 +39,7 @@ module.exports = [
         ResponseType: 'readonly',
         HTMLInputElement: 'readonly',
         HTMLAnchorElement: 'readonly',
+        HTMLDivElement: 'readonly',
         URLSearchParams: 'readonly',
         AbortController: 'readonly',
         AbortSignal: 'readonly',

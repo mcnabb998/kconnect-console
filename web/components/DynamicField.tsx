@@ -178,7 +178,7 @@ export default function DynamicField({ definition, value, onChange, error, conne
             <p className="text-sm">{fieldHelp.description}</p>
           </div>
         )}
-        
+
         {fieldHelp.examples && fieldHelp.examples.length > 0 && (
           <div>
             <p className="text-xs font-semibold text-gray-300 mb-1">Examples:</p>
@@ -191,7 +191,7 @@ export default function DynamicField({ definition, value, onChange, error, conne
             </ul>
           </div>
         )}
-        
+
         {fieldHelp.tips && fieldHelp.tips.length > 0 && (
           <div>
             <p className="text-xs font-semibold text-gray-300 mb-1">💡 Tips:</p>
@@ -202,10 +202,10 @@ export default function DynamicField({ definition, value, onChange, error, conne
             </ul>
           </div>
         )}
-        
+
         {fieldHelp.documentation && (
           <div className="pt-2 border-t border-gray-600">
-            <a 
+            <a
               href={fieldHelp.documentation}
               target="_blank"
               rel="noopener noreferrer"
@@ -219,11 +219,11 @@ export default function DynamicField({ definition, value, onChange, error, conne
     );
 
     return (
-      <Tooltip content={tooltipContent} position="top" maxWidth="400px">
+      <Tooltip content={tooltipContent} position="right" maxWidth="400px">
         <button
           type="button"
-          className="ml-1 inline-flex items-center justify-center w-4 h-4 text-xs rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
-          aria-label="Field help"
+          className="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs font-semibold rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors flex-shrink-0"
+          aria-label={`Help for ${displayName}`}
         >
           ?
         </button>

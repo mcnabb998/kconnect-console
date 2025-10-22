@@ -7,25 +7,26 @@ interface TooltipProps {
   maxWidth?: string;
 }
 
-export default function Tooltip({ 
-  content, 
-  children, 
+export default function Tooltip({
+  content,
+  children,
   position = 'top',
   maxWidth = '320px'
 }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [actualPosition, setActualPosition] = useState(position);
-  const triggerRef = useRef<React.ElementRef<'div'>>(null);
-  const tooltipRef = useRef<React.ElementRef<'div'>>(null);
+  const [coords, setCoords] = useState({ x: 0, y: 0 });
+  const triggerRef = useRef<HTMLDivElement | null>(null);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (isVisible && triggerRef.current && tooltipRef.current) {
       const triggerRect = triggerRef.current.getBoundingClientRect();
       const tooltipRect = tooltipRef.current.getBoundingClientRect();
-      
+
       // Check if tooltip would go off-screen and adjust position
       let newPosition = position;
-      
+
       if (position === 'top' && triggerRect.top - tooltipRect.height < 10) {
         newPosition = 'bottom';
       } else if (position === 'bottom' && triggerRect.bottom + tooltipRect.height > window.innerHeight - 10) {
@@ -35,25 +36,48 @@ export default function Tooltip({
       } else if (position === 'right' && triggerRect.right + tooltipRect.width > window.innerWidth - 10) {
         newPosition = 'left';
       }
-      
+
       setActualPosition(newPosition);
+
+      // Calculate fixed position coordinates based on trigger position
+      let x = triggerRect.left + triggerRect.width / 2;
+      let y = triggerRect.top;
+
+      switch (newPosition) {
+        case 'top':
+          y = triggerRect.top - 8; // 8px gap
+          break;
+        case 'bottom':
+          y = triggerRect.bottom + 8; // 8px gap
+          break;
+        case 'left':
+          x = triggerRect.left - 8;
+          y = triggerRect.top + triggerRect.height / 2;
+          break;
+        case 'right':
+          x = triggerRect.right + 8;
+          y = triggerRect.top + triggerRect.height / 2;
+          break;
+      }
+
+      setCoords({ x, y });
     }
   }, [isVisible, position]);
 
   const getPositionClasses = () => {
-    const baseClasses = 'absolute z-50 pointer-events-none';
-    
+    const baseClasses = 'fixed z-[9999] pointer-events-none';
+
     switch (actualPosition) {
       case 'top':
-        return `${baseClasses} bottom-full left-1/2 -translate-x-1/2 mb-2`;
+        return `${baseClasses} -translate-x-1/2 -translate-y-full`;
       case 'bottom':
-        return `${baseClasses} top-full left-1/2 -translate-x-1/2 mt-2`;
+        return `${baseClasses} -translate-x-1/2`;
       case 'left':
-        return `${baseClasses} right-full top-1/2 -translate-y-1/2 mr-2`;
+        return `${baseClasses} -translate-x-full -translate-y-1/2`;
       case 'right':
-        return `${baseClasses} left-full top-1/2 -translate-y-1/2 ml-2`;
+        return `${baseClasses} -translate-y-1/2`;
       default:
-        return `${baseClasses} bottom-full left-1/2 -translate-x-1/2 mb-2`;
+        return `${baseClasses} -translate-x-1/2 -translate-y-full`;
     }
   };
 
@@ -75,22 +99,28 @@ export default function Tooltip({
   };
 
   return (
-    <div className="relative inline-block" ref={triggerRef}>
-      <div
-        onMouseEnter={() => setIsVisible(true)}
-        onMouseLeave={() => setIsVisible(false)}
-        onFocus={() => setIsVisible(true)}
-        onBlur={() => setIsVisible(false)}
-        className="inline-block"
-      >
-        {children}
+    <>
+      <div className="inline-block" ref={triggerRef}>
+        <div
+          onMouseEnter={() => setIsVisible(true)}
+          onMouseLeave={() => setIsVisible(false)}
+          onFocus={() => setIsVisible(true)}
+          onBlur={() => setIsVisible(false)}
+          className="inline-block"
+        >
+          {children}
+        </div>
       </div>
-      
+
       {isVisible && (
-        <div 
+        <div
           ref={tooltipRef}
           className={getPositionClasses()}
-          style={{ maxWidth }}
+          style={{
+            maxWidth,
+            left: `${coords.x}px`,
+            top: `${coords.y}px`,
+          }}
           role="tooltip"
         >
           <div className="bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg shadow-lg p-3 relative">
@@ -99,6 +129,6 @@ export default function Tooltip({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
