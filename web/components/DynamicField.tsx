@@ -1,14 +1,17 @@
 import React from 'react';
 import { ConfigDefinition } from '@/lib/api';
+import Tooltip from './Tooltip';
+import { getFieldHelp } from '@/data/fieldHelp';
 
 interface DynamicFieldProps {
   definition: ConfigDefinition;
   value: any;
   onChange: (value: any) => void;
   error?: string[];
+  connectorClass?: string;
 }
 
-export default function DynamicField({ definition, value, onChange, error }: DynamicFieldProps) {
+export default function DynamicField({ definition, value, onChange, error, connectorClass }: DynamicFieldProps) {
   const {
     name,
     type,
@@ -19,6 +22,8 @@ export default function DynamicField({ definition, value, onChange, error }: Dyn
     display_name,
     recommended_values,
   } = definition;
+
+  const fieldHelp = getFieldHelp(name || '', connectorClass);
 
   const displayName = display_name || name || 'Unknown Field';
   const hasError = error && error.length > 0;
@@ -163,12 +168,76 @@ export default function DynamicField({ definition, value, onChange, error }: Dyn
     }
   };
 
+  const renderHelpTooltip = () => {
+    if (!fieldHelp) return null;
+
+    const tooltipContent = (
+      <div className="space-y-2">
+        {fieldHelp.description && (
+          <div>
+            <p className="text-sm">{fieldHelp.description}</p>
+          </div>
+        )}
+        
+        {fieldHelp.examples && fieldHelp.examples.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-gray-300 mb-1">Examples:</p>
+            <ul className="text-xs space-y-1">
+              {fieldHelp.examples.map((example, idx) => (
+                <li key={idx} className="font-mono bg-gray-800 dark:bg-gray-600 px-2 py-1 rounded">
+                  {example}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        
+        {fieldHelp.tips && fieldHelp.tips.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-gray-300 mb-1">💡 Tips:</p>
+            <ul className="text-xs space-y-1 list-disc list-inside">
+              {fieldHelp.tips.map((tip, idx) => (
+                <li key={idx}>{tip}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        
+        {fieldHelp.documentation && (
+          <div className="pt-2 border-t border-gray-600">
+            <a 
+              href={fieldHelp.documentation}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-blue-300 hover:text-blue-200 underline"
+            >
+              📖 View documentation →
+            </a>
+          </div>
+        )}
+      </div>
+    );
+
+    return (
+      <Tooltip content={tooltipContent} position="top" maxWidth="400px">
+        <button
+          type="button"
+          className="ml-1 inline-flex items-center justify-center w-4 h-4 text-xs rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+          aria-label="Field help"
+        >
+          ?
+        </button>
+      </Tooltip>
+    );
+  };
+
   return (
     <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm">
       <div className="flex items-center justify-between mb-2">
-        <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+        <label className="block text-sm font-semibold text-gray-900 dark:text-white flex items-center">
           {displayName}
           {required && <span className="text-red-500 ml-1 text-base">*</span>}
+          {renderHelpTooltip()}
         </label>
         {getImportanceBadge()}
       </div>
