@@ -663,13 +663,14 @@ function ConnectorListPage() {
                 {paginatedConnectors.map((connector) => {
                   const normalizedState = normalizeState(connector.state);
                   const badgeClass = stateStyles[normalizedState] ?? 'bg-slate-100 text-slate-600 ring-slate-500/20';
+                  const connectorNameId = `connector-name-${connector.name.replace(/[^a-zA-Z0-9-_]/g, '_')}`;
 
                   return (
                     <tr key={connector.name} className="hover:bg-slate-50 dark:hover:bg-gray-700/50">
                       <td className="w-12 px-4 py-4">
                         <input
                           type="checkbox"
-                          aria-label={`Select ${connector.name}`}
+                          aria-labelledby={connectorNameId}
                           checked={selectedConnectors.has(connector.name)}
                           onChange={() => toggleConnectorSelection(connector.name)}
                           className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500 dark:border-slate-600 dark:bg-gray-700"
@@ -677,6 +678,7 @@ function ConnectorListPage() {
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-emerald-700">
                         <Link
+                          id={connectorNameId}
                           href={`/connectors/${encodeURIComponent(connector.name)}`}
                           className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 transition hover:text-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300"
                         >
