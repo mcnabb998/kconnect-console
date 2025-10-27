@@ -16,6 +16,7 @@ import {
 } from '@/lib/api';
 import { connectorTemplates, ConnectorTemplate, getTemplatesByCategory } from '@/data/connectorTemplates';
 import DynamicField from '@/components/DynamicField';
+import { ErrorDisplay } from '@/components/ErrorDisplay';
 import { logger } from '@/lib/logger';
 
 type Step = 'template' | 'plugin' | 'configure' | 'preview';
@@ -30,7 +31,7 @@ export default function NewConnectorPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<Step>('template');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
 
   // Plugin availability tracking
   const [pluginAvailability, setPluginAvailability] = useState<PluginAvailability>({
@@ -78,10 +79,8 @@ export default function NewConnectorPage() {
         lastRefresh: new Date(),
       });
     } catch (error) {
-      const message = error instanceof KafkaConnectApiError
-        ? `API Error: ${error.message}`
-        : `Failed to load connector plugins: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      setError(message);
+      const err = error instanceof Error ? error : new Error(String(error));
+      setError(err);
       setPluginAvailability(prev => ({ ...prev, loading: false }));
     }
   };
@@ -156,10 +155,8 @@ export default function NewConnectorPage() {
       const definitions = validation.configs?.map(config => config.definition) || [];
       setConfigDefinitions(definitions);
     } catch (error) {
-      const message = error instanceof KafkaConnectApiError
-        ? `Validation Error: ${error.message}`
-        : `Failed to load configuration: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      setError(message);
+      const err = error instanceof Error ? error : new Error(String(error));
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -174,7 +171,7 @@ export default function NewConnectorPage() {
 
     if (!connectorName.trim()) {
       logger.error('Validation failed: No connector name provided');
-      setError('Connector name is required');
+      setError(new Error('Connector name is required'));
       return false;
     }
 
@@ -206,11 +203,9 @@ export default function NewConnectorPage() {
       logger.info('Configuration validation passed successfully');
       return true;
     } catch (error) {
-      const message = error instanceof KafkaConnectApiError
-        ? error.message
-        : `Validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      const err = error instanceof Error ? error : new Error(String(error));
       logger.error('Validation error:', error);
-      setError(message);
+      setError(err);
       return false;
     } finally {
       setValidating(false);
@@ -220,7 +215,7 @@ export default function NewConnectorPage() {
   // Create connector
   const handleCreate = async () => {
     if (!connectorName.trim() || !selectedPlugin) {
-      setError('Connector name and plugin are required');
+      setError(new Error('Connector name and plugin are required'));
       return;
     }
 
@@ -228,10 +223,10 @@ export default function NewConnectorPage() {
     if (!isValid) {
       // Set appropriate error message based on whether we have validation errors
       if (Object.keys(validationErrors).length > 0) {
-        setError('Configuration validation failed. Please fix the validation errors below before creating the connector.');
+        setError(new Error('Configuration validation failed. Please fix the validation errors below before creating the connector.'));
       } else if (!error) {
         // Only set generic error if there isn't already a more specific error from validateConfiguration
-        setError('Configuration validation failed. Please review your configuration and try again.');
+        setError(new Error('Configuration validation failed. Please review your configuration and try again.'));
       }
       // Scroll to top to show errors
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -244,10 +239,8 @@ export default function NewConnectorPage() {
       await createConnector(connectorName, configValues);
       router.push(`/connectors/${encodeURIComponent(connectorName)}?created=true`);
     } catch (error) {
-      const message = error instanceof KafkaConnectApiError
-        ? `Creation Failed: ${error.message}`
-        : `Failed to create connector: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      setError(message);
+      const err = error instanceof Error ? error : new Error(String(error));
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -292,15 +285,13 @@ export default function NewConnectorPage() {
 
       {/* Error Display */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <div className="flex">
-            <div className="text-red-400">⚠️</div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Error</h3>
-              <p className="text-sm text-red-700 mt-1">{error}</p>
-            </div>
-          </div>
-        </div>
+        <ErrorDisplay
+          error={error}
+          onRetry={() => setError(null)}
+          onDismiss={() => setError(null)}
+          showDismiss={true}
+          context="Creating connector"
+        />
       )}
 
       {/* Step Indicator */}

@@ -147,10 +147,10 @@ describe('ConnectorDetail page', () => {
     render(<ConnectorDetail />);
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to fetch connector details')).toBeInTheDocument();
+      // ErrorDisplay shows the error
+      expect(screen.getByText('Service not reachable')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
     });
-
-    expect(screen.getByText('Error')).toBeInTheDocument();
   });
 
   it('schedules a refresh after successful actions', async () => {
