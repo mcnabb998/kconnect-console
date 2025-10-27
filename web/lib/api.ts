@@ -299,3 +299,8 @@ export function extractValidationErrors(validation: ValidationResponse): Record<
   
   return errors;
 }
+
+// Connector Metrics API
+export async function fetchConnectorMetrics(connectorName: string): Promise<import('../types/connect').ConnectorMetrics> {
+  return apiRequest<import('../types/connect').ConnectorMetrics>(`/connectors/${encodeURIComponent(connectorName)}/metrics`);
+}

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { LoadingButton } from '@/components/LoadingButton';
 import { SkeletonBadge, SkeletonCard, SkeletonLine } from '@/components/Skeleton';
 import { ToastContainer } from '@/components/ToastContainer';
+import { MetricsCard } from '@/components/MetricsCard';
 import { SectionErrorBoundary } from '../../components/SectionErrorBoundary';
 import TransformationsTab from './TransformationsTab';
 import type { ConnectorGetResponse } from '@/types/connect';
@@ -42,7 +43,7 @@ export default function ConnectorDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'transformations'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'transformations' | 'metrics'>('overview');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [nextRefreshIn, setNextRefreshIn] = useState(10);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -272,7 +273,7 @@ export default function ConnectorDetail() {
     );
   }
 
-  const tabButton = (tab: 'overview' | 'transformations', label: string) => (
+  const tabButton = (tab: 'overview' | 'transformations' | 'metrics', label: string) => (
     <button
       key={tab}
       type="button"
@@ -346,9 +347,10 @@ export default function ConnectorDetail() {
           <nav className="mb-6 flex gap-4 border-b" role="tablist" aria-label="Connector detail sections">
             {tabButton('overview', 'Overview')}
             {tabButton('transformations', 'Transformations')}
+            {tabButton('metrics', 'Metrics')}
           </nav>
 
-          {activeTab === 'overview' ? (
+          {activeTab === 'overview' && (
             <div className="space-y-6">
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
@@ -455,7 +457,9 @@ export default function ConnectorDetail() {
                 )}
               </SectionErrorBoundary>
             </div>
-          ) : (
+          )}
+          
+          {activeTab === 'transformations' && (
             <SectionErrorBoundary section="Transformations Tab">
               <TransformationsTab
                 name={name}
@@ -465,6 +469,12 @@ export default function ConnectorDetail() {
                   fetchConnectorDetails(true);
                 }}
               />
+            </SectionErrorBoundary>
+          )}
+          
+          {activeTab === 'metrics' && (
+            <SectionErrorBoundary section="Metrics Tab">
+              <MetricsCard connectorName={name} refreshInterval={5000} />
             </SectionErrorBoundary>
           )}
         </div>

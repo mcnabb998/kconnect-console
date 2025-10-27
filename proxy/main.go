@@ -23,6 +23,7 @@ import (
 
 var (
 	connectURL     = getEnv("KAFKA_CONNECT_URL", "http://localhost:8083")
+	jolokiaURL     = getEnv("JOLOKIA_URL", "http://localhost:8778/jolokia")
 	allowedOrigins = getEnv("ALLOWED_ORIGINS", "*")
 	// Only redact true secret-like keys (including camelCase variants); avoid generic "key.converter"
 	sensitivePattern = regexp.MustCompile(`(?i)(?:^|[._-]|[a-z0-9])(password|secret|api[._-]?key|access[._-]?key|secret[._-]?key|token|credential(s)?)(?:$|[._-]|[a-z0-9])`)
@@ -41,6 +42,15 @@ var (
 		valid     bool
 		fetching  bool // Prevents thundering herd
 	}{}
+	metricsCacheTTL = 5 * time.Second
+	metricsCache    = struct {
+		sync.RWMutex
+		data      map[string]ConnectorMetrics
+		expiresAt map[string]time.Time
+	}{
+		data:      make(map[string]ConnectorMetrics),
+		expiresAt: make(map[string]time.Time),
+	}
 )
 
 // MonitoringSummary represents aggregated status information for connectors.
@@ -60,6 +70,75 @@ type ConnectorStatusOverview struct {
 	Name  string `json:"name"`
 	State string `json:"state"`
 	Type  string `json:"type"`
+}
+
+// ConnectorMetrics represents performance metrics for a connector
+type ConnectorMetrics struct {
+	ConnectorName      string                 `json:"connectorName"`
+	Throughput         ThroughputMetrics      `json:"throughput"`
+	Errors             ErrorMetrics           `json:"errors"`
+	Resources          ResourceMetrics        `json:"resources"`
+	Lag                LagMetrics             `json:"lag,omitempty"`
+	Tasks              []TaskMetrics          `json:"tasks"`
+	LastUpdated        time.Time              `json:"lastUpdated"`
+	CollectionDuration time.Duration          `json:"collectionDuration"`
+}
+
+// ThroughputMetrics represents data throughput metrics
+type ThroughputMetrics struct {
+	RecordsPerSecond float64 `json:"recordsPerSecond"`
+	BytesPerSecond   float64 `json:"bytesPerSecond"`
+	TotalRecords     int64   `json:"totalRecords"`
+	TotalBytes       int64   `json:"totalBytes"`
+}
+
+// ErrorMetrics represents error statistics
+type ErrorMetrics struct {
+	TotalErrors     int64   `json:"totalErrors"`
+	ErrorRate       float64 `json:"errorRate"`
+	LastErrorTime   int64   `json:"lastErrorTime,omitempty"`
+	RecentErrorCount int    `json:"recentErrorCount"`
+}
+
+// ResourceMetrics represents resource usage (placeholder for future JMX integration)
+type ResourceMetrics struct {
+	CPUPercent    float64 `json:"cpuPercent,omitempty"`
+	MemoryUsedMB  float64 `json:"memoryUsedMB,omitempty"`
+	MemoryTotalMB float64 `json:"memoryTotalMB,omitempty"`
+	ThreadCount   int     `json:"threadCount,omitempty"`
+}
+
+// LagMetrics represents consumer lag information (for source connectors)
+type LagMetrics struct {
+	TotalLag     int64   `json:"totalLag"`
+	MaxLag       int64   `json:"maxLag"`
+	AverageLag   float64 `json:"averageLag"`
+	PartitionLag map[string]int64 `json:"partitionLag,omitempty"`
+}
+
+// TaskMetrics represents per-task performance metrics
+type TaskMetrics struct {
+	TaskID           int     `json:"taskId"`
+	RecordsProcessed int64   `json:"recordsProcessed"`
+	BytesProcessed   int64   `json:"bytesProcessed"`
+	ErrorCount       int64   `json:"errorCount"`
+	State            string  `json:"state"`
+}
+
+// JolokiaRequest represents a request to Jolokia
+type JolokiaRequest struct {
+	Type      string `json:"type"`
+	MBean     string `json:"mbean"`
+	Attribute string `json:"attribute,omitempty"`
+}
+
+// JolokiaResponse represents a response from Jolokia
+type JolokiaResponse struct {
+	Request   map[string]interface{} `json:"request"`
+	Value     interface{}            `json:"value"`
+	Timestamp int64                  `json:"timestamp"`
+	Status    int                    `json:"status"`
+	Error     string                 `json:"error,omitempty"`
 }
 
 type connectorStatusResponse struct {
@@ -1025,6 +1104,202 @@ func summaryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// fetchJolokiaMetric fetches a single metric from Jolokia
+func fetchJolokiaMetric(ctx context.Context, mbean, attribute string) (interface{}, error) {
+	client := &http.Client{Timeout: 5 * time.Second}
+	
+	reqBody := JolokiaRequest{
+		Type:      "read",
+		MBean:     mbean,
+		Attribute: attribute,
+	}
+	
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("marshal jolokia request: %w", err)
+	}
+	
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, jolokiaURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("jolokia request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("jolokia returned status %d", resp.StatusCode)
+	}
+	
+	var jolokiaResp JolokiaResponse
+	if err := json.NewDecoder(resp.Body).Decode(&jolokiaResp); err != nil {
+		return nil, fmt.Errorf("decode jolokia response: %w", err)
+	}
+	
+	if jolokiaResp.Status != 200 {
+		return nil, fmt.Errorf("jolokia error: %s", jolokiaResp.Error)
+	}
+	
+	return jolokiaResp.Value, nil
+}
+
+// fetchConnectorMetrics fetches performance metrics for a specific connector
+func fetchConnectorMetrics(ctx context.Context, connectorName string) (ConnectorMetrics, error) {
+	startTime := time.Now()
+	
+	metrics := ConnectorMetrics{
+		ConnectorName: connectorName,
+		LastUpdated:   time.Now(),
+		Tasks:         []TaskMetrics{},
+	}
+	
+	// Fetch connector status to get task information
+	status, err := fetchConnectorStatus(ctx, monitoringHTTPClient, connectURL, connectorName)
+	if err != nil {
+		return metrics, fmt.Errorf("fetch connector status: %w", err)
+	}
+	
+	// Build task metrics from status
+	for _, task := range status.Tasks {
+		taskMetric := TaskMetrics{
+			TaskID: task.ID,
+			State:  task.State,
+		}
+		metrics.Tasks = append(metrics.Tasks, taskMetric)
+	}
+	
+	// Try to fetch JMX metrics via Jolokia for each task
+	var totalRecords int64
+	var totalBytes int64
+	var totalErrors int64
+	
+	for _, task := range status.Tasks {
+		// Construct MBean pattern for connector task metrics
+		// Format: kafka.connect:type=connector-task-metrics,connector="{connector}",task="{task}"
+		taskMBean := fmt.Sprintf("kafka.connect:type=connector-task-metrics,connector=\"%s\",task=\"%d\"", 
+			connectorName, task.ID)
+		
+		// Try to fetch records processed
+		if val, err := fetchJolokiaMetric(ctx, taskMBean, "source-record-poll-total"); err == nil {
+			if count, ok := val.(float64); ok {
+				totalRecords += int64(count)
+				for i := range metrics.Tasks {
+					if metrics.Tasks[i].TaskID == task.ID {
+						metrics.Tasks[i].RecordsProcessed = int64(count)
+						break
+					}
+				}
+			}
+		}
+		
+		// Try to fetch bytes processed
+		if val, err := fetchJolokiaMetric(ctx, taskMBean, "source-record-write-total"); err == nil {
+			if count, ok := val.(float64); ok {
+				totalBytes += int64(count)
+				for i := range metrics.Tasks {
+					if metrics.Tasks[i].TaskID == task.ID {
+						metrics.Tasks[i].BytesProcessed = int64(count)
+						break
+					}
+				}
+			}
+		}
+		
+		// Fetch error counts
+		if val, err := fetchJolokiaMetric(ctx, taskMBean, "total-errors-logged"); err == nil {
+			if count, ok := val.(float64); ok {
+				totalErrors += int64(count)
+				for i := range metrics.Tasks {
+					if metrics.Tasks[i].TaskID == task.ID {
+						metrics.Tasks[i].ErrorCount = int64(count)
+						break
+					}
+				}
+			}
+		}
+	}
+	
+	// Populate aggregated metrics
+	metrics.Throughput.TotalRecords = totalRecords
+	metrics.Throughput.TotalBytes = totalBytes
+	metrics.Errors.TotalErrors = totalErrors
+	
+	// Calculate rates (these would be more accurate with historical data)
+	// For now, we'll use simple estimates based on uptime
+	metrics.CollectionDuration = time.Since(startTime)
+	
+	return metrics, nil
+}
+
+// getConnectorMetrics retrieves metrics with caching
+func getConnectorMetrics(ctx context.Context, connectorName string) (ConnectorMetrics, error) {
+	now := time.Now()
+	
+	// Check cache
+	metricsCache.RLock()
+	if cached, ok := metricsCache.data[connectorName]; ok {
+		if expires, ok := metricsCache.expiresAt[connectorName]; ok && now.Before(expires) {
+			metricsCache.RUnlock()
+			return cached, nil
+		}
+	}
+	metricsCache.RUnlock()
+	
+	// Fetch fresh metrics
+	metrics, err := fetchConnectorMetrics(ctx, connectorName)
+	if err != nil {
+		return ConnectorMetrics{}, err
+	}
+	
+	// Update cache
+	metricsCache.Lock()
+	metricsCache.data[connectorName] = metrics
+	metricsCache.expiresAt[connectorName] = now.Add(metricsCacheTTL)
+	metricsCache.Unlock()
+	
+	return metrics, nil
+}
+
+// connectorMetricsHandler returns performance metrics for a specific connector
+func connectorMetricsHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	connectorName := vars["name"]
+	
+	if connectorName == "" {
+		http.Error(w, "connector name is required", http.StatusBadRequest)
+		return
+	}
+	
+	metrics, err := getConnectorMetrics(r.Context(), connectorName)
+	if err != nil {
+		status := http.StatusInternalServerError
+		errorMsg := err.Error()
+		
+		var cue *connectUnavailableError
+		if errors.As(err, &cue) {
+			status = http.StatusServiceUnavailable
+		}
+		
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":   "metrics_fetch_failed",
+			"message": errorMsg,
+		})
+		return
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(metrics); err != nil {
+		log.Printf("failed to encode metrics response: %v", err)
+	}
+}
+
 func main() {
 	router := mux.NewRouter()
 
@@ -1047,6 +1322,7 @@ func main() {
 	router.HandleFunc("/api/{cluster}/connector-plugins", proxyHandler).Methods("GET")
 	router.HandleFunc("/api/{cluster}/connector-plugins/{path:.*}", proxyHandler).Methods("GET", "PUT")
 	router.HandleFunc("/api/{cluster}/monitoring/summary", monitoringSummaryHandler).Methods("GET")
+	router.HandleFunc("/api/{cluster}/connectors/{name}/metrics", connectorMetricsHandler).Methods("GET")
 
 	// CORS configuration
 	// In production, set ALLOWED_ORIGINS environment variable to specific domains
