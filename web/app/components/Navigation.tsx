@@ -18,6 +18,7 @@ const navItems: NavItem[] = [
   { href: '/monitoring', label: 'Monitoring', Icon: PulseIcon },
   { href: '/health', label: 'Health', Icon: HeartIcon },
   { href: '/connectors/templates', label: 'Create', Icon: PlusSquareIcon },
+  { href: '/audit-logs', label: 'Audit Logs', Icon: DocumentTextIcon },
   { href: '/capabilities', label: 'Capabilities', Icon: SparklesIcon },
   { href: '/settings', label: 'Settings', Icon: SettingsIcon },
 ];
@@ -221,6 +222,26 @@ function SettingsIcon({ className }: { className?: string }) {
     >
       <path
         d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.5-3.75a1 1 0 0 0 .5-.87v-1.76a1 1 0 0 0-.5-.87l-1.66-.96a1 1 0 0 1-.5-.87l-.03-1.92a1 1 0 0 0-.74-.96l-1.9-.5a1 1 0 0 0-1.02.36l-1.16 1.39a1 1 0 0 1-.9.34l-1.77-.26a1 1 0 0 0-1.01.47l-.95 1.65a1 1 0 0 1-.82.5L6.5 9.6a1 1 0 0 0-.87 1l.07 1.99a1 1 0 0 0 .5.87l1.66.96a1 1 0 0 1 .5.87l.03 1.92a1 1 0 0 0 .74.96l1.9.5a1 1 0 0 0 1.02-.36l1.16-1.39a1 1 0 0 1 .9-.34l1.77.26a1 1 0 0 0 1.01-.47l.95-1.65a1 1 0 0 1 .82-.5l1.92-.23Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function DocumentTextIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M9 12h6m-6 4h6M7 4h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"

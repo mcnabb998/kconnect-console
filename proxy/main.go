@@ -41,6 +41,8 @@ var (
 		valid     bool
 		fetching  bool // Prevents thundering herd
 	}{}
+	// Audit logger with max 10000 entries
+	auditLogger = NewAuditLogger(10000)
 )
 
 // MonitoringSummary represents aggregated status information for connectors.
@@ -713,8 +715,24 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Proxying %s %s to %s", r.Method, r.URL.Path, targetURL.String())
 
+	// Read body for audit logging (if needed)
+	var bodyBytes []byte
+	if r.Body != nil {
+		bodyBytes, err = io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "Failed to read request body", http.StatusInternalServerError)
+			log.Printf("Error reading request body: %v", err)
+			return
+		}
+		// Restore body for proxying
+		r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+	}
+
+	// Detect connector operations for audit logging
+	connectorName, auditAction := detectConnectorOperation(r, bodyBytes)
+
 	// Create the proxy request
-	proxyReq, err := http.NewRequestWithContext(r.Context(), r.Method, targetURL.String(), r.Body)
+	proxyReq, err := http.NewRequestWithContext(r.Context(), r.Method, targetURL.String(), bytes.NewReader(bodyBytes))
 	if err != nil {
 		http.Error(w, "Failed to create proxy request", http.StatusInternalServerError)
 		log.Printf("Error creating proxy request: %v", err)
@@ -730,11 +748,105 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Failed to proxy request", http.StatusBadGateway)
 		log.Printf("Error proxying request: %v", err)
+		
+		// Log failed operation
+		if auditAction != "" {
+			logConnectorOperation(connectorName, auditAction, extractClientIP(r), "FAILED", nil, err.Error())
+		}
 		return
 	}
+
+	// Log successful operation
+	if auditAction != "" && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		changes := extractChangesFromBody(bodyBytes)
+		logConnectorOperation(connectorName, auditAction, extractClientIP(r), "SUCCESS", changes, "")
+	} else if auditAction != "" {
+		logConnectorOperation(connectorName, auditAction, extractClientIP(r), "FAILED", nil, fmt.Sprintf("HTTP %d", resp.StatusCode))
+	}
+
 	if err := writeRedactedResponse(w, resp); err != nil {
 		log.Printf("failed to stream proxy response: %v", err)
 	}
+}
+
+// detectConnectorOperation determines the connector name and action from the request
+func detectConnectorOperation(r *http.Request, bodyBytes []byte) (string, string) {
+	path := r.URL.Path
+	method := r.Method
+
+	// Extract connector name from path
+	// Paths like: /api/{cluster}/connectors/{name} or /api/{cluster}/connectors/{name}/{action}
+	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
+	
+	// Need at least: api, cluster, connectors
+	if len(parts) < 3 || parts[2] != "connectors" {
+		return "", ""
+	}
+
+	var connectorName string
+
+	// POST /api/{cluster}/connectors - CREATE
+	if len(parts) == 3 && method == "POST" {
+		// Extract name from body
+		var payload map[string]interface{}
+		if err := json.Unmarshal(bodyBytes, &payload); err == nil {
+			if name, ok := payload["name"].(string); ok {
+				return name, "CREATE"
+			}
+		}
+		return "", ""
+	}
+
+	// Operations on specific connector
+	if len(parts) >= 4 {
+		connectorName = parts[3]
+		
+		if len(parts) == 4 {
+			// /api/{cluster}/connectors/{name}
+			switch method {
+			case "PUT":
+				return connectorName, "UPDATE"
+			case "DELETE":
+				return connectorName, "DELETE"
+			}
+		} else if len(parts) >= 5 {
+			// /api/{cluster}/connectors/{name}/{action}
+			switch parts[4] {
+			case "pause":
+				return connectorName, "PAUSE"
+			case "resume":
+				return connectorName, "RESUME"
+			case "restart":
+				return connectorName, "RESTART"
+			case "config":
+				if method == "PUT" {
+					return connectorName, "UPDATE"
+				}
+			}
+		}
+	}
+
+	return "", ""
+}
+
+// extractChangesFromBody extracts configuration changes from request body
+func extractChangesFromBody(bodyBytes []byte) map[string]interface{} {
+	if len(bodyBytes) == 0 {
+		return nil
+	}
+
+	var payload map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &payload); err != nil {
+		return nil
+	}
+
+	// For CREATE/UPDATE, extract config
+	if config, ok := payload["config"].(map[string]interface{}); ok {
+		// Redact sensitive values in the audit log
+		return redactSensitiveData(config).(map[string]interface{})
+	}
+
+	return nil
 }
 
 func clusterActionHandler(w http.ResponseWriter, r *http.Request) {
@@ -1025,6 +1137,86 @@ func summaryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// auditLogHandler returns audit log entries with optional filtering
+func auditLogHandler(w http.ResponseWriter, r *http.Request) {
+	// Parse query parameters
+	connector := r.URL.Query().Get("connector")
+	action := r.URL.Query().Get("action")
+	status := r.URL.Query().Get("status")
+	limitStr := r.URL.Query().Get("limit")
+	sinceStr := r.URL.Query().Get("since")
+	untilStr := r.URL.Query().Get("until")
+
+	// Parse limit
+	limit := 1000 // default limit
+	if limitStr != "" {
+		if parsed, err := strconv.Atoi(limitStr); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+
+	// Parse time filters
+	var since, until time.Time
+	if sinceStr != "" {
+		if parsed, err := time.Parse(time.RFC3339, sinceStr); err == nil {
+			since = parsed
+		}
+	}
+	if untilStr != "" {
+		if parsed, err := time.Parse(time.RFC3339, untilStr); err == nil {
+			until = parsed
+		}
+	}
+
+	// Get filtered entries
+	entries := auditLogger.GetFiltered(connector, action, status, since, until, limit)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		"entries": entries,
+		"total":   len(entries),
+	}); err != nil {
+		log.Printf("failed to encode audit log response: %v", err)
+	}
+}
+
+// logConnectorOperation logs a connector operation to the audit log
+func logConnectorOperation(connectorName, action, sourceIP, status string, changes map[string]interface{}, errMsg string) {
+	entry := AuditLogEntry{
+		Action:        action,
+		ConnectorName: connectorName,
+		SourceIP:      sourceIP,
+		Status:        status,
+		Changes:       changes,
+		ErrorMessage:  errMsg,
+	}
+	auditLogger.Log(entry)
+}
+
+// extractClientIP extracts the client IP from the request
+func extractClientIP(r *http.Request) string {
+	// Check X-Forwarded-For header first (for proxied requests)
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		// Take the first IP in the chain
+		parts := strings.Split(xff, ",")
+		return strings.TrimSpace(parts[0])
+	}
+	
+	// Check X-Real-IP header
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return xri
+	}
+	
+	// Fall back to RemoteAddr
+	ip := r.RemoteAddr
+	// Remove port if present
+	if idx := strings.LastIndex(ip, ":"); idx != -1 {
+		ip = ip[:idx]
+	}
+	return ip
+}
+
 func main() {
 	router := mux.NewRouter()
 
@@ -1047,6 +1239,8 @@ func main() {
 	router.HandleFunc("/api/{cluster}/connector-plugins", proxyHandler).Methods("GET")
 	router.HandleFunc("/api/{cluster}/connector-plugins/{path:.*}", proxyHandler).Methods("GET", "PUT")
 	router.HandleFunc("/api/{cluster}/monitoring/summary", monitoringSummaryHandler).Methods("GET")
+	// Audit log
+	router.HandleFunc("/api/{cluster}/audit-logs", auditLogHandler).Methods("GET")
 
 	// CORS configuration
 	// In production, set ALLOWED_ORIGINS environment variable to specific domains
